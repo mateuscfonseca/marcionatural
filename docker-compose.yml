@@ -15,7 +15,7 @@ services:
     build: ./app
     container_name: marcionatural-frontend
     ports:
-      - "4000:80"
+      - "9000:80"
     depends_on:
       - backend
     networks:
