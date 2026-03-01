@@ -5,8 +5,8 @@ services:
     volumes:
       - sqlite_data:/app/data
       - uploads_data:/app/uploads/images
-    environment:
-      - JWT_SECRET=marcionatural-secret-key-change-in-production
+    env_file:
+      - .env
     networks:
       - marcionatural-network
     restart: unless-stopped
@@ -15,7 +15,7 @@ services:
     build: ./app
     container_name: marcionatural-frontend
     ports:
-      - "80:80"
+      - "4000:80"
     depends_on:
       - backend
     networks:
