@@ -239,7 +239,7 @@ onMounted(() => {
 
     <!-- Modal de Detalhes da Entrada -->
     <div v-if="showEntryModal && selectedEntry" class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+      <div class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
         <div class="sticky top-0 bg-white border-b px-4 sm:px-6 py-4 flex justify-between items-center">
           <h2 class="text-lg font-bold text-gray-800">📝 Detalhes da Entrada</h2>
           <button @click="showEntryModal = false" class="text-gray-500 hover:text-gray-700 text-2xl">×</button>
@@ -323,7 +323,9 @@ onMounted(() => {
                 :key="report.id"
                 class="text-xs text-gray-600 bg-gray-50 rounded-lg p-2"
               >
-                🚩 Reportado em {{ formatDate(report.created_at) }}
+                <span class="font-medium">🚩 {{ report.reporter_username || 'Usuário' }}</span>
+                <span class="text-gray-400">•</span>
+                <span>{{ formatDate(report.created_at) }}</span>
               </div>
             </div>
           </div>

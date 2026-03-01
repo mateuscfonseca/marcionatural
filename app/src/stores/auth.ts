@@ -15,10 +15,9 @@ const state = reactive<AuthState>({
 });
 
 export async function initAuth() {
-  if (state.initialized) {
-    return;
-  }
-  
+  // Sempre revalida a autenticação (importante para refresh da página)
+  state.loading = true;
+
   try {
     const result = await getCurrentUser();
     state.user = result?.user ?? null;
@@ -32,7 +31,7 @@ export async function initAuth() {
   }
 }
 
-export async function logout() {
+export async function logout(redirect = true) {
   try {
     await apiLogout();
   } finally {

@@ -1,9 +1,16 @@
 <script setup lang="ts">
 import { useAuth } from '@/stores/auth';
 import { useSidebar } from '@/composables/useSidebar';
+import { useRouter } from 'vue-router';
 
 const { state, logout } = useAuth();
 const { toggle } = useSidebar();
+const router = useRouter();
+
+async function handleLogout() {
+  await logout();
+  router.push('/login');
+}
 </script>
 
 <template>
@@ -30,7 +37,7 @@ const { toggle } = useSidebar();
       </div>
 
       <button
-        @click="logout"
+        @click="handleLogout"
         class="px-3 sm:px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors flex items-center gap-2 text-sm sm:text-base"
       >
         <span>🚪</span>

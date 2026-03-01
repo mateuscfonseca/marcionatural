@@ -173,7 +173,7 @@ function closeModals() {
 
     <!-- Modal Nova Entrada Rápida -->
     <div v-if="showQuickEntry" class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div class="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+      <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div class="p-4 sm:p-6 border-b flex justify-between items-center sticky top-0 bg-white">
           <h2 class="text-lg sm:text-xl font-bold text-gray-800">📝 Nova Entrada</h2>
           <button @click="showQuickEntry = false" class="text-gray-500 hover:text-gray-700 text-2xl">×</button>
@@ -267,7 +267,7 @@ function closeModals() {
 
     <!-- Modal Registrar Projeto -->
     <div v-if="showProjectLog" class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div class="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+      <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div class="p-4 sm:p-6 border-b flex justify-between items-center sticky top-0 bg-white">
           <h2 class="text-lg sm:text-xl font-bold text-gray-800">⏱️ Registrar Tempo no Projeto</h2>
           <button @click="showProjectLog = false" class="text-gray-500 hover:text-gray-700 text-2xl">×</button>

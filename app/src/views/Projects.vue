@@ -213,7 +213,7 @@ onMounted(loadProjects);
 
     <!-- Modal Criar/Editar Projeto -->
     <div v-if="showModal" class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div class="bg-white rounded-xl shadow-2xl max-w-md w-full">
+      <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full">
         <div class="p-4 sm:p-6 border-b">
           <h2 class="text-lg sm:text-xl font-bold text-gray-800">
             {{ editingProject ? 'Editar Projeto' : 'Novo Projeto' }}
@@ -276,7 +276,7 @@ onMounted(loadProjects);
 
     <!-- Modal Registrar Tempo -->
     <div v-if="showLogModal" class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div class="bg-white rounded-xl shadow-2xl max-w-md w-full">
+      <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full">
         <div class="p-4 sm:p-6 border-b flex justify-between items-center">
           <h2 class="text-lg sm:text-xl font-bold text-gray-800">
             ⏱️ Registrar Tempo - {{ selectedProject?.name }}
@@ -324,7 +324,7 @@ onMounted(loadProjects);
 
     <!-- Modal Progresso Semanal -->
     <div v-if="showProgressModal && currentProgress" class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div class="bg-white rounded-xl shadow-2xl max-w-md w-full">
+      <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full">
         <div class="p-4 sm:p-6 border-b flex justify-between items-center">
           <h2 class="text-lg sm:text-xl font-bold text-gray-800">📊 Progresso Semanal</h2>
           <button @click="showProgressModal = false" class="text-gray-500 hover:text-gray-700 text-2xl">×</button>

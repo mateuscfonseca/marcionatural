@@ -19,7 +19,8 @@ onMounted(async () => {
   console.log('[App] Auth state:', state);
 
   // Redireciona para login se não estiver autenticado e não estiver em página de auth
-  if (!state.user && !isAuthPage.value) {
+  // Apenas após a autenticação ser verificada (loading = false)
+  if (!state.loading && !state.user && !isAuthPage.value) {
     console.log('[App] Redirecting to login');
     router.push('/login');
   }

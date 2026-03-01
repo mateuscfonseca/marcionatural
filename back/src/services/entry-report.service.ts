@@ -334,6 +334,51 @@ export async function getUserInvalidatedEntries(
 }
 
 /**
+ * Busca entradas do usuário que receberam reports (mesmo não invalidadas)
+ */
+export async function getMyEntriesWithReports(
+  userId: number
+): Promise<Array<{
+  id: number;
+  description: string;
+  photo_url: string | null;
+  points: number;
+  created_at: string;
+  is_invalidated: boolean;
+  report_count: number;
+  report_created_at: string | null;
+}>> {
+  const stmt = db.prepare(`
+    SELECT
+      e.id,
+      e.description,
+      e.photo_url,
+      e.points,
+      e.created_at,
+      e.is_invalidated,
+      COUNT(er.id) as report_count,
+      MIN(er.created_at) as report_created_at
+    FROM user_entries e
+    LEFT JOIN entry_reports er ON e.id = er.entry_id
+    WHERE e.user_id = ?
+    GROUP BY e.id
+    HAVING report_count > 0
+    ORDER BY report_created_at DESC
+  `);
+
+  return stmt.all(userId) as Array<{
+    id: number;
+    description: string;
+    photo_url: string | null;
+    points: number;
+    created_at: string;
+    is_invalidated: boolean;
+    report_count: number;
+    report_created_at: string | null;
+  }>;
+}
+
+/**
  * Busca estatísticas de votação para um usuário
  */
 export async function getVotingStats(userId: number): Promise<{
@@ -376,4 +421,54 @@ export async function getVotingStats(userId: number): Promise<{
     totalInvalidatedEntries: totalInvalidatedResult.count,
     myTotalReports: myReportsResult.count,
   };
+}
+
+/**
+ * Busca todas as entradas que o usuário reportou
+ */
+export async function getMyReports(
+  userId: number
+): Promise<Array<{
+  id: number;
+  entry_id: number;
+  entry_description: string;
+  entry_photo_url: string | null;
+  entry_points: number;
+  entry_created_at: string;
+  entry_is_invalidated: boolean;
+  report_created_at: string;
+  owner_username: string;
+  report_count: number;
+}>> {
+  const stmt = db.prepare(`
+    SELECT
+      er.id,
+      er.entry_id,
+      e.description as entry_description,
+      e.photo_url as entry_photo_url,
+      e.points as entry_points,
+      e.created_at as entry_created_at,
+      e.is_invalidated as entry_is_invalidated,
+      er.created_at as report_created_at,
+      u.username as owner_username,
+      (SELECT COUNT(*) FROM entry_reports er2 WHERE er2.entry_id = er.entry_id) as report_count
+    FROM entry_reports er
+    INNER JOIN user_entries e ON er.entry_id = e.id
+    INNER JOIN users u ON e.user_id = u.id
+    WHERE er.reporter_user_id = ?
+    ORDER BY er.created_at DESC
+  `);
+
+  return stmt.all(userId) as Array<{
+    id: number;
+    entry_id: number;
+    entry_description: string;
+    entry_photo_url: string | null;
+    entry_points: number;
+    entry_created_at: string;
+    entry_is_invalidated: boolean;
+    report_created_at: string;
+    owner_username: string;
+    report_count: number;
+  }>;
 }

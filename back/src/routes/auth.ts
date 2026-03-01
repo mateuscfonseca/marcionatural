@@ -42,9 +42,13 @@ auth.post('/register', async (c) => {
     });
 
     // Define cookie HTTP-only
-    // Em produção, adicionar Secure quando usar HTTPS
+    // Em produção: SameSite=None; Secure para permitir cross-origin
+    // Em desenvolvimento: sem SameSite para evitar restrições
     const isDev = process.env.NODE_ENV !== 'production';
-    c.header('Set-Cookie', `auth_token=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400${isDev ? '' : '; Secure'}`);
+    const cookieOptions = isDev
+      ? `auth_token=${token}; Path=/; HttpOnly; Max-Age=86400`
+      : `auth_token=${token}; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=86400`;
+    c.header('Set-Cookie', cookieOptions);
 
     return c.json({
       message: 'Usuário cadastrado com sucesso',
@@ -91,9 +95,13 @@ auth.post('/login', async (c) => {
     });
 
     // Define cookie HTTP-only
-    // Em produção, adicionar Secure quando usar HTTPS
+    // Em produção: SameSite=None; Secure para permitir cross-origin
+    // Em desenvolvimento: sem SameSite para evitar restrições
     const isDev = process.env.NODE_ENV !== 'production';
-    c.header('Set-Cookie', `auth_token=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400${isDev ? '' : '; Secure'}`);
+    const cookieOptions = isDev
+      ? `auth_token=${token}; Path=/; HttpOnly; Max-Age=86400`
+      : `auth_token=${token}; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=86400`;
+    c.header('Set-Cookie', cookieOptions);
 
     return c.json({
       message: 'Login realizado com sucesso',

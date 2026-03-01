@@ -66,7 +66,13 @@ const router = createRouter({
 
 router.beforeEach((to, from, next) => {
   const auth = useAuth()
-  
+
+  // Aguarda a autenticação ser verificada antes de decidir
+  if (auth.state.loading) {
+    next()
+    return
+  }
+
   if (to.meta.requiresAuth && !auth.isAuthenticated()) {
     next('/login')
   } else if ((to.path === '/login' || to.path === '/register') && auth.isAuthenticated()) {

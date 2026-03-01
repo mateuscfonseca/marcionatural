@@ -20,6 +20,8 @@ import {
   getUserInvalidatedEntries,
   getVotingStats,
   getReportsByEntryWithDetails,
+  getMyReports,
+  getMyEntriesWithReports,
 } from '../services/entry-report.service';
 
 const entries = new Hono();
@@ -292,6 +294,38 @@ entries.get('/voting/stats', async (c) => {
     return c.json({ stats });
   } catch (error) {
     console.error('Erro ao buscar estatísticas:', error);
+    return c.json({ error: 'Erro interno do servidor' }, 500);
+  }
+});
+
+// Listar meus reports
+entries.get('/voting/my-reports', async (c) => {
+  try {
+    const authRequest = c.req.raw as unknown as AuthRequest;
+    const userId = authRequest.user!.userId;
+
+    console.log('[Entries] Buscando meus reports para userId:', userId);
+    const reports = await getMyReports(userId);
+    console.log('[Entries] Reports encontrados:', reports.length);
+    return c.json({ reports });
+  } catch (error) {
+    console.error('Erro ao buscar meus reports:', error);
+    return c.json({ error: 'Erro interno do servidor' }, 500);
+  }
+});
+
+// Listar minhas entradas que receberam reports
+entries.get('/voting/my-reported-entries', async (c) => {
+  try {
+    const authRequest = c.req.raw as unknown as AuthRequest;
+    const userId = authRequest.user!.userId;
+
+    console.log('[Entries] Buscando minhas entradas reportadas para userId:', userId);
+    const entries = await getMyEntriesWithReports(userId);
+    console.log('[Entries] Entradas reportadas encontradas:', entries.length);
+    return c.json({ entries });
+  } catch (error) {
+    console.error('Erro ao buscar minhas entradas reportadas:', error);
     return c.json({ error: 'Erro interno do servidor' }, 500);
   }
 });

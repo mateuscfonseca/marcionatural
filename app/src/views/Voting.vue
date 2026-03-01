@@ -4,6 +4,8 @@ import {
   getVotingAvailableEntries,
   getVotingInvalidatedEntries,
   getMyVotingInvalidatedEntries,
+  getMyReports,
+  getMyReportedEntries,
   getVotingStats,
   reportEntry,
   removeEntryReport,
@@ -13,22 +15,55 @@ import type { VotingEntry, VotingStats } from '@/types';
 const availableEntries = ref<VotingEntry[]>([]);
 const invalidatedEntries = ref<VotingEntry[]>([]);
 const myInvalidatedEntries = ref<VotingEntry[]>([]);
+const myReports = ref<Array<{
+  id: number;
+  entry_id: number;
+  entry_description: string;
+  entry_photo_url: string | null;
+  entry_points: number;
+  entry_created_at: string;
+  entry_is_invalidated: boolean;
+  report_created_at: string;
+  owner_username: string;
+  report_count: number;
+}>>([]);
+const myReportedEntries = ref<Array<{
+  id: number;
+  description: string;
+  photo_url: string | null;
+  points: number;
+  created_at: string;
+  is_invalidated: boolean;
+  report_count: number;
+  report_created_at: string | null;
+}>>([]);
 const stats = ref<VotingStats | null>(null);
 const loading = ref(true);
-const activeTab = ref<'available' | 'invalidated' | 'my-invalidated'>('available');
+const activeTab = ref<'available' | 'invalidated' | 'my-invalidated' | 'my-reports' | 'received-reports'>('available');
 
 async function loadData() {
   try {
-    const [available, invalidated, myInvalidated, statsData] = await Promise.all([
+    const [available, invalidated, myInvalidated, myReportsData, myReportedEntriesData, statsData] = await Promise.all([
       getVotingAvailableEntries(),
       getVotingInvalidatedEntries(),
       getMyVotingInvalidatedEntries(),
+      getMyReports(),
+      getMyReportedEntries(),
       getVotingStats(),
     ]);
     availableEntries.value = available.entries;
     invalidatedEntries.value = invalidated.entries;
     myInvalidatedEntries.value = myInvalidated.entries;
+    myReports.value = myReportsData.reports;
+    myReportedEntries.value = myReportedEntriesData.entries;
     stats.value = statsData.stats;
+    console.log('[Voting] Dados carregados:', {
+      available: availableEntries.value.length,
+      invalidated: invalidatedEntries.value.length,
+      myInvalidated: myInvalidatedEntries.value.length,
+      myReports: myReports.value.length,
+      myReportedEntries: myReportedEntries.value.length,
+    });
   } catch (error) {
     console.error('Erro ao carregar dados:', error);
   } finally {
@@ -54,6 +89,18 @@ async function handleReport(entryId: number) {
 async function handleRemoveReport(entryId: number) {
   try {
     if (confirm('Tem certeza que deseja remover seu report?')) {
+      await removeEntryReport(entryId);
+      await loadData();
+    }
+  } catch (error) {
+    console.error('Erro ao remover report:', error);
+    alert('Erro ao remover report');
+  }
+}
+
+async function handleRemoveReportFromMyReports(reportId: number, entryId: number) {
+  try {
+    if (confirm('Tem certeza que deseja remover este report?')) {
       await removeEntryReport(entryId);
       await loadData();
     }
@@ -140,6 +187,20 @@ onMounted(loadData);
           :class="activeTab === 'my-invalidated' ? 'bg-orange-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
         >
           ⚠️ Minhas ({{ myInvalidatedEntries.length }})
+        </button>
+        <button
+          @click="activeTab = 'my-reports'"
+          class="px-3 py-2 rounded-lg font-medium whitespace-nowrap transition-colors text-xs sm:text-sm flex-shrink-0"
+          :class="activeTab === 'my-reports' ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+        >
+          📝 Meus Reports ({{ myReports.length }})
+        </button>
+        <button
+          @click="activeTab = 'received-reports'"
+          class="px-3 py-2 rounded-lg font-medium whitespace-nowrap transition-colors text-xs sm:text-sm flex-shrink-0"
+          :class="activeTab === 'received-reports' ? 'bg-pink-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+        >
+          📬 Recebidos ({{ myReportedEntries.length }})
         </button>
       </div>
 
@@ -282,13 +343,124 @@ onMounted(loadData);
         </div>
       </div>
 
+      <!-- Meus Reports -->
+      <div v-else-if="activeTab === 'my-reports'" class="space-y-3">
+        <div v-if="myReports.length === 0" class="bg-purple-50 rounded-xl p-8 text-center border border-purple-200">
+          <p class="text-purple-600 text-base font-medium">📝 Você não fez nenhum report</p>
+          <p class="text-purple-500 text-sm mt-1">Seus reports aparecerão aqui</p>
+        </div>
+
+        <div
+          v-for="report in myReports"
+          :key="report.id"
+          class="bg-white rounded-xl shadow-sm border p-4"
+        >
+          <div class="flex gap-3">
+            <div v-if="report.entry_photo_url" class="flex-shrink-0">
+              <img
+                :src="report.entry_photo_url"
+                :alt="report.entry_description"
+                class="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-lg"
+              />
+            </div>
+
+            <div class="flex-1 min-w-0">
+              <div class="flex items-start justify-between gap-2 mb-2">
+                <p class="text-gray-800 font-medium text-sm line-clamp-2">{{ report.entry_description }}</p>
+                <span
+                  class="px-2 py-1 rounded text-xs font-semibold whitespace-nowrap flex-shrink-0"
+                  :class="report.entry_points >= 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
+                >
+                  {{ report.entry_points >= 0 ? '+' : '' }}{{ report.entry_points }}
+                </span>
+              </div>
+
+              <div class="flex items-center gap-2 mb-2 flex-wrap">
+                <span class="px-2 py-1 rounded text-xs font-semibold bg-purple-100 text-purple-800">
+                  📝 Reportado em {{ formatDate(report.report_created_at).split(' ')[0] }}
+                </span>
+                <span class="text-xs text-gray-500">👤 {{ report.owner_username }}</span>
+                <span
+                  class="px-2 py-1 rounded text-xs font-semibold"
+                  :class="report.entry_is_invalidated ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'"
+                >
+                  {{ report.entry_is_invalidated ? '🚫 Invalidada' : `⚠️ ${report.report_count}/3` }}
+                </span>
+              </div>
+
+              <button
+                @click="handleRemoveReportFromMyReports(report.id, report.entry_id)"
+                class="w-full sm:w-auto px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
+              >
+                🗑️ Remover Report
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Minhas Entradas Reportadas (Recebidos) -->
+      <div v-else-if="activeTab === 'received-reports'" class="space-y-3">
+        <div v-if="myReportedEntries.length === 0" class="bg-pink-50 rounded-xl p-8 text-center border border-pink-200">
+          <p class="text-pink-600 text-base font-medium">✅ Nenhuma entrada reportada</p>
+          <p class="text-pink-500 text-sm mt-1">Suas entradas não receberam reports</p>
+        </div>
+
+        <div
+          v-for="entry in myReportedEntries"
+          :key="entry.id"
+          class="bg-white rounded-xl shadow-sm border p-4"
+        >
+          <div class="flex gap-3">
+            <div v-if="entry.photo_url" class="flex-shrink-0">
+              <img
+                :src="entry.photo_url"
+                :alt="entry.description"
+                class="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-lg"
+              />
+            </div>
+
+            <div class="flex-1 min-w-0">
+              <div class="flex items-start justify-between gap-2 mb-2">
+                <p class="text-gray-800 font-medium text-sm line-clamp-2">{{ entry.description }}</p>
+                <span
+                  class="px-2 py-1 rounded text-xs font-semibold whitespace-nowrap flex-shrink-0"
+                  :class="entry.points >= 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
+                >
+                  {{ entry.points >= 0 ? '+' : '' }}{{ entry.points }}
+                </span>
+              </div>
+
+              <div class="flex items-center gap-2 mb-2 flex-wrap">
+                <span class="px-2 py-1 rounded text-xs font-semibold bg-pink-100 text-pink-800">
+                  📬 Reportada em {{ entry.report_created_at ? formatDate(entry.report_created_at).split(' ')[0] : 'N/A' }}
+                </span>
+                <span
+                  class="px-2 py-1 rounded text-xs font-semibold"
+                  :class="entry.is_invalidated ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'"
+                >
+                  {{ entry.is_invalidated ? '🚫 Invalidada' : `⚠️ ${entry.report_count}/3` }}
+                </span>
+              </div>
+
+              <p class="text-xs text-gray-500">
+                📅 Criada em {{ formatDate(entry.created_at) }}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Info Box -->
       <div class="mt-6 bg-blue-50 border border-blue-200 rounded-xl p-4">
         <h3 class="font-semibold text-blue-800 mb-2 text-sm sm:text-base">📋 Como funciona?</h3>
         <ul class="text-xs sm:text-sm text-blue-700 space-y-1">
-          <li>• Reporte entradas suspeitas de outros usuários</li>
+          <li>• <strong>Para Votar:</strong> Reporte entradas suspeitas de outros usuários</li>
+          <li>• <strong>Invalidadas:</strong> Veja todas as entradas invalidadas (≥3 reports)</li>
+          <li>• <strong>Minhas:</strong> Suas entradas que foram invalidadas</li>
+          <li>• <strong>Meus Reports:</strong> Entradas que você reportou (pode remover)</li>
+          <li>• <strong>Recebidos:</strong> Suas entradas que receberam reports</li>
           <li>• <strong>3 reports</strong> invalidam a entrada automaticamente</li>
-          <li>• Entradas invalidadas não contam pontos</li>
         </ul>
       </div>
     </div>

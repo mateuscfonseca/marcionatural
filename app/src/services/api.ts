@@ -349,6 +349,44 @@ export async function getMyVotingInvalidatedEntries(): Promise<{ entries: Voting
   return handleResponse(response);
 }
 
+export async function getMyReports(): Promise<{
+  reports: Array<{
+    id: number;
+    entry_id: number;
+    entry_description: string;
+    entry_photo_url: string | null;
+    entry_points: number;
+    entry_created_at: string;
+    entry_is_invalidated: boolean;
+    report_created_at: string;
+    owner_username: string;
+    report_count: number;
+  }>;
+}> {
+  const response = await fetch(`${API_BASE}/entries/voting/my-reports`, {
+    credentials: 'include',
+  });
+  return handleResponse(response);
+}
+
+export async function getMyReportedEntries(): Promise<{
+  entries: Array<{
+    id: number;
+    description: string;
+    photo_url: string | null;
+    points: number;
+    created_at: string;
+    is_invalidated: boolean;
+    report_count: number;
+    report_created_at: string | null;
+  }>;
+}> {
+  const response = await fetch(`${API_BASE}/entries/voting/my-reported-entries`, {
+    credentials: 'include',
+  });
+  return handleResponse(response);
+}
+
 export async function getVotingStats(): Promise<{ stats: VotingStats }> {
   const response = await fetch(`${API_BASE}/entries/voting/stats`, {
     credentials: 'include',
