@@ -1,0 +1,271 @@
+import { db } from '../db';
+
+export interface PersonalProject {
+  id: number;
+  user_id: number;
+  name: string;
+  description: string | null;
+  weekly_hours_goal: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface ProjectDailyLog {
+  id: number;
+  project_id: number;
+  user_id: number;
+  date: string;
+  duration_minutes: number;
+  week_number: number;
+  year: number;
+  created_at: string;
+}
+
+export interface WeeklyProgress {
+  weekNumber: number;
+  year: number;
+  totalMinutes: number;
+  goalMinutes: number;
+  goalReached: boolean;
+  percentage: number;
+  dailyLogs: ProjectDailyLog[];
+}
+
+export async function getProjectsByUser(userId: number): Promise<PersonalProject[]> {
+  const stmt = db.prepare(`
+    SELECT * FROM personal_projects
+    WHERE user_id = ?
+    ORDER BY created_at DESC
+  `);
+  return stmt.all(userId) as PersonalProject[];
+}
+
+export async function getProjectById(id: number, userId: number): Promise<PersonalProject | undefined> {
+  const stmt = db.prepare('SELECT * FROM personal_projects WHERE id = ? AND user_id = ?');
+  return stmt.get(id, userId) as PersonalProject | undefined;
+}
+
+export async function createProject(
+  userId: number,
+  name: string,
+  description: string,
+  weeklyHoursGoal: number
+): Promise<PersonalProject> {
+  const stmt = db.prepare(`
+    INSERT INTO personal_projects (user_id, name, description, weekly_hours_goal)
+    VALUES (?, ?, ?, ?)
+  `);
+  const result = stmt.run(userId, name, description, weeklyHoursGoal);
+
+  return {
+    id: result.lastInsertRowid as number,
+    user_id: userId,
+    name,
+    description,
+    weekly_hours_goal: weeklyHoursGoal,
+    is_active: true,
+    created_at: new Date().toISOString(),
+  };
+}
+
+export async function updateProject(
+  id: number,
+  userId: number,
+  name?: string,
+  description?: string,
+  weeklyHoursGoal?: number,
+  isActive?: boolean
+): Promise<PersonalProject | undefined> {
+  const updates: string[] = [];
+  const values: (string | number | boolean)[] = [];
+
+  if (name !== undefined) {
+    updates.push('name = ?');
+    values.push(name);
+  }
+  if (description !== undefined) {
+    updates.push('description = ?');
+    values.push(description);
+  }
+  if (weeklyHoursGoal !== undefined) {
+    updates.push('weekly_hours_goal = ?');
+    values.push(weeklyHoursGoal);
+  }
+  if (isActive !== undefined) {
+    updates.push('is_active = ?');
+    values.push(isActive);
+  }
+
+  if (updates.length === 0) {
+    return getProjectById(id, userId);
+  }
+
+  values.push(id, userId);
+  const stmt = db.prepare(`
+    UPDATE personal_projects
+    SET ${updates.join(', ')}
+    WHERE id = ? AND user_id = ?
+  `);
+  stmt.run(...values);
+
+  return getProjectById(id, userId);
+}
+
+export async function deleteProject(id: number, userId: number): Promise<boolean> {
+  const stmt = db.prepare('DELETE FROM personal_projects WHERE id = ? AND user_id = ?');
+  const result = stmt.run(id, userId);
+  return result.changes > 0;
+}
+
+/**
+ * Obtém o número da semana ISO de uma data
+ */
+function getWeekNumber(date: Date): { week: number; year: number } {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const weekNum = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  
+  // Ano da semana ISO pode ser diferente do ano civil
+  const isoYear = d.getUTCFullYear();
+  
+  return { week: weekNum, year: isoYear };
+}
+
+/**
+ * Registra tempo diário em um projeto pessoal
+ */
+export async function logProjectTime(
+  userId: number,
+  projectId: number,
+  durationMinutes: number,
+  date?: string
+): Promise<ProjectDailyLog> {
+  const logDate = date ? new Date(date) : new Date();
+  const dateStr = String(logDate.toISOString().split('T')[0]);
+  const { week, year } = getWeekNumber(logDate);
+
+  // Verifica se já existe registro para este dia
+  const existingStmt = db.prepare(`
+    SELECT * FROM project_daily_logs
+    WHERE project_id = ? AND user_id = ? AND date = ?
+  `);
+  const existing = existingStmt.get(projectId, userId, dateStr) as ProjectDailyLog | undefined;
+
+  if (existing) {
+    // Atualiza registro existente (soma minutos)
+    const updateStmt = db.prepare(`
+      UPDATE project_daily_logs
+      SET duration_minutes = duration_minutes + ?, week_number = ?, year = ?
+      WHERE id = ?
+    `);
+    updateStmt.run(durationMinutes, week, year, existing.id);
+    return {
+      ...existing,
+      duration_minutes: existing.duration_minutes + durationMinutes,
+      week_number: week,
+      year,
+    };
+  }
+
+  // Cria novo registro
+  const stmt = db.prepare(`
+    INSERT INTO project_daily_logs (project_id, user_id, date, duration_minutes, week_number, year)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `);
+  const result = stmt.run(projectId, userId, dateStr, durationMinutes, week, year);
+
+  return {
+    id: result.lastInsertRowid as number,
+    project_id: projectId,
+    user_id: userId,
+    date: dateStr,
+    duration_minutes: durationMinutes,
+    week_number: week,
+    year,
+    created_at: new Date().toISOString(),
+  };
+}
+
+/**
+ * Obtém logs diários de um projeto para uma semana específica
+ */
+export async function getWeeklyProgress(
+  userId: number,
+  projectId: number,
+  weekNumber: number,
+  year: number
+): Promise<WeeklyProgress> {
+  // Busca meta do projeto
+  const projectStmt = db.prepare('SELECT weekly_hours_goal FROM personal_projects WHERE id = ? AND user_id = ?');
+  const project = projectStmt.get(projectId, userId) as { weekly_hours_goal: number } | undefined;
+
+  if (!project) {
+    throw new Error('Projeto não encontrado');
+  }
+
+  const goalMinutes = project.weekly_hours_goal * 60;
+
+  // Busca logs da semana
+  const logsStmt = db.prepare(`
+    SELECT * FROM project_daily_logs
+    WHERE project_id = ? AND user_id = ? AND week_number = ? AND year = ?
+    ORDER BY date DESC
+  `);
+  const logs = logsStmt.all(projectId, userId, weekNumber, year) as ProjectDailyLog[];
+
+  const totalMinutes = logs.reduce((sum, log) => sum + log.duration_minutes, 0);
+  const goalReached = totalMinutes >= goalMinutes;
+  const percentage = Math.min(100, (totalMinutes / goalMinutes) * 100);
+
+  return {
+    weekNumber,
+    year,
+    totalMinutes,
+    goalMinutes,
+    goalReached,
+    percentage,
+    dailyLogs: logs,
+  };
+}
+
+/**
+ * Obtém progresso da semana atual
+ */
+export async function getCurrentWeekProgress(
+  userId: number,
+  projectId: number
+): Promise<WeeklyProgress> {
+  const { week, year } = getWeekNumber(new Date());
+  return getWeeklyProgress(userId, projectId, week, year);
+}
+
+/**
+ * Calcula pontos de todas as semanas de um projeto
+ */
+export async function getProjectTotalPoints(userId: number, projectId: number): Promise<number> {
+  const { calculateProjectWeeklyPoints } = await import('./points.service');
+
+  // Busca todas as semanas únicas com logs
+  const stmt = db.prepare(`
+    SELECT DISTINCT week_number, year
+    FROM project_daily_logs
+    WHERE project_id = ? AND user_id = ?
+  `);
+  const weeks = stmt.all(projectId, userId) as Array<{ week_number: number; year: number }>;
+
+  let totalPoints = 0;
+  const processedWeeks = new Set<string>();
+
+  for (const week of weeks) {
+    const key = `${week.year}-${week.week_number}`;
+    if (processedWeeks.has(key)) continue;
+    processedWeeks.add(key);
+
+    const result = await calculateProjectWeeklyPoints(userId, projectId, week.week_number, week.year);
+    totalPoints += result.points;
+  }
+
+  return totalPoints;
+}

@@ -1,0 +1,33 @@
+services:
+  backend:
+    build: ./back
+    container_name: marcionatural-backend
+    volumes:
+      - sqlite_data:/app/data
+      - uploads_data:/app/uploads/images
+    environment:
+      - JWT_SECRET=marcionatural-secret-key-change-in-production
+    networks:
+      - marcionatural-network
+    restart: unless-stopped
+
+  frontend:
+    build: ./app
+    container_name: marcionatural-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - marcionatural-network
+    restart: unless-stopped
+
+volumes:
+  sqlite_data:
+    driver: local
+  uploads_data:
+    driver: local
+
+networks:
+  marcionatural-network:
+    driver: bridge

@@ -1,0 +1,13 @@
+:80 {
+    root * /usr/share/caddy
+    file_server
+
+    # Servir imagens do backend (uploads)
+    handle /images/* {
+        reverse_proxy backend:3000
+    }
+
+    handle /api/* {
+        reverse_proxy backend:3000
+    }
+}

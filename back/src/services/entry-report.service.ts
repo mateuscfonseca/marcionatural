@@ -1,0 +1,379 @@
+import { db } from '../db';
+
+export interface EntryReport {
+  id: number;
+  entry_id: number;
+  reporter_user_id: number;
+  created_at: string;
+}
+
+export interface EntryReportWithDetails extends EntryReport {
+  entry_description: string;
+  reporter_username: string;
+}
+
+export interface EntryReportStats {
+  entryId: number;
+  reportCount: number;
+  isInvalidated: boolean;
+}
+
+/**
+ * Cria um report de entrada
+ */
+export async function createEntryReport(
+  entryId: number,
+  reporterUserId: number
+): Promise<EntryReport> {
+  const stmt = db.prepare(`
+    INSERT INTO entry_reports (entry_id, reporter_user_id)
+    VALUES (?, ?)
+  `);
+
+  const result = stmt.run(entryId, reporterUserId);
+
+  return {
+    id: result.lastInsertRowid as number,
+    entry_id: entryId,
+    reporter_user_id: reporterUserId,
+    created_at: new Date().toISOString(),
+  };
+}
+
+/**
+ * Remove um report (apenas se o usuário foi quem criou)
+ */
+export async function removeEntryReport(
+  entryId: number,
+  reporterUserId: number
+): Promise<boolean> {
+  const stmt = db.prepare(`
+    DELETE FROM entry_reports
+    WHERE entry_id = ? AND reporter_user_id = ?
+  `);
+
+  const result = stmt.run(entryId, reporterUserId);
+  return result.changes > 0;
+}
+
+/**
+ * Verifica se usuário já reportou uma entrada
+ */
+export async function hasUserReported(
+  userId: number,
+  entryId: number
+): Promise<boolean> {
+  const stmt = db.prepare(`
+    SELECT 1 FROM entry_reports
+    WHERE entry_id = ? AND reporter_user_id = ?
+  `);
+  const result = stmt.get(entryId, userId);
+  return !!result;
+}
+
+/**
+ * Busca todos os reports de uma entrada
+ */
+export async function getReportsByEntry(
+  entryId: number
+): Promise<EntryReport[]> {
+  const stmt = db.prepare(`
+    SELECT * FROM entry_reports
+    WHERE entry_id = ?
+    ORDER BY created_at DESC
+  `);
+  return stmt.all(entryId) as EntryReport[];
+}
+
+/**
+ * Busca reports com detalhes
+ */
+export async function getReportsByEntryWithDetails(
+  entryId: number
+): Promise<EntryReportWithDetails[]> {
+  const stmt = db.prepare(`
+    SELECT
+      er.*,
+      e.description as entry_description,
+      u.username as reporter_username
+    FROM entry_reports er
+    INNER JOIN user_entries e ON er.entry_id = e.id
+    INNER JOIN users u ON er.reporter_user_id = u.id
+    WHERE er.entry_id = ?
+    ORDER BY er.created_at DESC
+  `);
+  return stmt.all(entryId) as EntryReportWithDetails[];
+}
+
+/**
+ * Conta quantos reports uma entrada tem
+ */
+export async function getReportCount(entryId: number): Promise<number> {
+  const stmt = db.prepare(`
+    SELECT COUNT(*) as count FROM entry_reports
+    WHERE entry_id = ?
+  `);
+  const result = stmt.get(entryId) as { count: number };
+  return result.count;
+}
+
+/**
+ * Invalida uma entrada automaticamente (≥3 reports)
+ */
+export async function invalidateEntry(entryId: number): Promise<boolean> {
+  const stmt = db.prepare(`
+    UPDATE user_entries
+    SET is_invalidated = TRUE, invalidated_at = CURRENT_TIMESTAMP
+    WHERE id = ?
+  `);
+  const result = stmt.run(entryId);
+  return result.changes > 0;
+}
+
+/**
+ * Verifica e atualiza invalidação de entrada (≥3 reports)
+ */
+export async function checkAndUpdateInvalidation(
+  entryId: number
+): Promise<{ invalidated: boolean; reportCount: number }> {
+  const reportCount = await getReportCount(entryId);
+
+  // Verifica status atual
+  const currentStatusStmt = db.prepare(`
+    SELECT is_invalidated FROM user_entries WHERE id = ?
+  `);
+  const currentStatus = currentStatusStmt.get(entryId) as {
+    is_invalidated: boolean;
+  } | undefined;
+  const currentlyInvalidated = currentStatus?.is_invalidated ?? false;
+
+  let invalidated = false;
+
+  // 3 ou mais reports invalida a entrada
+  if (reportCount >= 3 && !currentlyInvalidated) {
+    await invalidateEntry(entryId);
+    invalidated = true;
+  }
+
+  return { invalidated, reportCount };
+}
+
+/**
+ * Busca stats de reports para múltiplas entradas
+ */
+export async function getReportsStatsForEntries(
+  entryIds: number[]
+): Promise<Map<number, EntryReportStats>> {
+  if (entryIds.length === 0) {
+    return new Map();
+  }
+
+  const placeholders = entryIds.map(() => '?').join(',');
+  const stmt = db.prepare(`
+    SELECT
+      e.id as entryId,
+      COUNT(er.id) as reportCount,
+      e.is_invalidated as isInvalidated
+    FROM user_entries e
+    LEFT JOIN entry_reports er ON e.id = er.entry_id
+    WHERE e.id IN (${placeholders})
+    GROUP BY e.id
+  `);
+
+  const results = stmt.all(...entryIds) as Array<{
+    entryId: number;
+    reportCount: number;
+    isInvalidated: boolean;
+  }>;
+
+  const statsMap = new Map<number, EntryReportStats>();
+  for (const result of results) {
+    statsMap.set(result.entryId, {
+      entryId: result.entryId,
+      reportCount: result.reportCount,
+      isInvalidated: result.isInvalidated,
+    });
+  }
+
+  return statsMap;
+}
+
+/**
+ * Busca todas as entradas que um usuário ainda não reportou
+ * (excluindo as próprias entradas do usuário)
+ */
+export async function getEntriesAvailableToReport(
+  userId: number,
+  limit = 50
+): Promise<Array<{
+  id: number;
+  user_id: number;
+  username: string;
+  description: string;
+  photo_url: string | null;
+  points: number;
+  created_at: string;
+  report_count: number;
+  is_invalidated: boolean;
+}>> {
+  const stmt = db.prepare(`
+    SELECT
+      e.id,
+      e.user_id,
+      u.username,
+      e.description,
+      e.photo_url,
+      e.points,
+      e.created_at,
+      e.is_invalidated,
+      (SELECT COUNT(*) FROM entry_reports er WHERE er.entry_id = e.id) as report_count
+    FROM user_entries e
+    INNER JOIN users u ON e.user_id = u.id
+    WHERE e.user_id != ?
+      AND e.id NOT IN (
+        SELECT entry_id FROM entry_reports WHERE reporter_user_id = ?
+      )
+    ORDER BY e.created_at DESC
+    LIMIT ?
+  `);
+
+  return stmt.all(userId, userId, limit) as Array<{
+    id: number;
+    user_id: number;
+    username: string;
+    description: string;
+    photo_url: string | null;
+    points: number;
+    created_at: string;
+    report_count: number;
+    is_invalidated: boolean;
+  }>;
+}
+
+/**
+ * Busca todas as entradas invalidadas
+ */
+export async function getInvalidatedEntries(): Promise<Array<{
+  id: number;
+  user_id: number;
+  username: string;
+  description: string;
+  photo_url: string | null;
+  points: number;
+  created_at: string;
+  invalidated_at: string | null;
+  report_count: number;
+}>> {
+  const stmt = db.prepare(`
+    SELECT
+      e.id,
+      e.user_id,
+      u.username,
+      e.description,
+      e.photo_url,
+      e.points,
+      e.created_at,
+      e.invalidated_at,
+      (SELECT COUNT(*) FROM entry_reports er WHERE er.entry_id = e.id) as report_count
+    FROM user_entries e
+    INNER JOIN users u ON e.user_id = u.id
+    WHERE e.is_invalidated = TRUE
+    ORDER BY e.invalidated_at DESC
+  `);
+
+  return stmt.all() as Array<{
+    id: number;
+    user_id: number;
+    username: string;
+    description: string;
+    photo_url: string | null;
+    points: number;
+    created_at: string;
+    invalidated_at: string | null;
+    report_count: number;
+  }>;
+}
+
+/**
+ * Busca entradas invalidadas de um usuário específico
+ */
+export async function getUserInvalidatedEntries(
+  userId: number
+): Promise<Array<{
+  id: number;
+  description: string;
+  photo_url: string | null;
+  points: number;
+  created_at: string;
+  invalidated_at: string | null;
+  report_count: number;
+}>> {
+  const stmt = db.prepare(`
+    SELECT
+      e.id,
+      e.description,
+      e.photo_url,
+      e.points,
+      e.created_at,
+      e.invalidated_at,
+      (SELECT COUNT(*) FROM entry_reports er WHERE er.entry_id = e.id) as report_count
+    FROM user_entries e
+    WHERE e.user_id = ? AND e.is_invalidated = TRUE
+    ORDER BY e.invalidated_at DESC
+  `);
+
+  return stmt.all(userId) as Array<{
+    id: number;
+    description: string;
+    photo_url: string | null;
+    points: number;
+    created_at: string;
+    invalidated_at: string | null;
+    report_count: number;
+  }>;
+}
+
+/**
+ * Busca estatísticas de votação para um usuário
+ */
+export async function getVotingStats(userId: number): Promise<{
+  entriesAvailableToVote: number;
+  myInvalidatedEntries: number;
+  totalInvalidatedEntries: number;
+  myTotalReports: number;
+}> {
+  const availableStmt = db.prepare(`
+    SELECT COUNT(*) as count
+    FROM user_entries e
+    WHERE e.user_id != ?
+      AND e.id NOT IN (
+        SELECT entry_id FROM entry_reports WHERE reporter_user_id = ?
+      )
+  `);
+  const availableResult = availableStmt.get(userId, userId) as { count: number };
+
+  const myInvalidatedStmt = db.prepare(`
+    SELECT COUNT(*) as count FROM user_entries
+    WHERE user_id = ? AND is_invalidated = TRUE
+  `);
+  const myInvalidatedResult = myInvalidatedStmt.get(userId) as { count: number };
+
+  const totalInvalidatedStmt = db.prepare(`
+    SELECT COUNT(*) as count FROM user_entries
+    WHERE is_invalidated = TRUE
+  `);
+  const totalInvalidatedResult = totalInvalidatedStmt.get() as { count: number };
+
+  const myReportsStmt = db.prepare(`
+    SELECT COUNT(*) as count FROM entry_reports
+    WHERE reporter_user_id = ?
+  `);
+  const myReportsResult = myReportsStmt.get(userId) as { count: number };
+
+  return {
+    entriesAvailableToVote: availableResult.count,
+    myInvalidatedEntries: myInvalidatedResult.count,
+    totalInvalidatedEntries: totalInvalidatedResult.count,
+    myTotalReports: myReportsResult.count,
+  };
+}
