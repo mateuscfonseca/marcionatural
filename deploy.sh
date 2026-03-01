@@ -49,29 +49,29 @@ deploy() {
     fi
     
     # Remove containers e imagens antigas para forçar rebuild limpo
-    docker compose down --remove-orphans
-    docker compose build --no-cache frontend
-    docker compose up -d
+    sudo docker compose down --remove-orphans
+    sudo docker compose build --no-cache frontend
+    sudo docker compose up -d
     
     log_success "Deploy concluído!"
 }
 
 restart() {
-    cd "$DEPLOY_DIR" && docker compose restart
+    cd "$DEPLOY_DIR" && sudo docker compose restart
     log_success "Containers reiniciados!"
 }
 
 stop() {
-    cd "$DEPLOY_DIR" && docker compose down
+    cd "$DEPLOY_DIR" && sudo docker compose down
     log_success "Containers parados!"
 }
 
 logs() {
-    cd "$DEPLOY_DIR" && docker compose logs -f
+    cd "$DEPLOY_DIR" && sudo docker compose logs -f
 }
 
 status() {
-    cd "$DEPLOY_DIR" && docker compose ps
+    cd "$DEPLOY_DIR" && sudo docker compose ps
 }
 
 case "${1:-}" in
