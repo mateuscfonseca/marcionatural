@@ -4,10 +4,16 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const DB_PATH = join(__dirname, '..', 'data', 'marcionatural.db');
+
+// Em produção (container Docker), usa /app/data
+// Em desenvolvimento, usa o diretório data local
+const isProduction = process.env.NODE_ENV === 'production';
+const DB_PATH = isProduction
+  ? '/app/data/marcionatural.db'
+  : join(__dirname, '..', 'data', 'marcionatural.db');
 
 // Garante que o diretório data existe
-const dataDir = join(__dirname, '..', 'data');
+const dataDir = isProduction ? '/app/data' : join(__dirname, '..', 'data');
 if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
 }
