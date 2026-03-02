@@ -43,7 +43,7 @@ onMounted(async () => {
     <Sidebar />
     <div class="flex-1 flex flex-col m-3 sm:m-10 w-full min-w-0">
       <Header />
-      <main class="flex-1 overflow-y-auto overflow-x-hidden">
+      <main class="flex-1 overflow-y-auto overflow-x-hidden sm:mb-10">
         <router-view />
       </main>
     </div>
