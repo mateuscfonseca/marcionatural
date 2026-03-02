@@ -51,6 +51,7 @@ deploy() {
     # Remove containers e imagens antigas para forçar rebuild limpo
     sudo docker compose down --remove-orphans
     sudo docker compose build --no-cache frontend
+    sudo docker compose build --no-cache backend
     sudo docker compose up -d
     
     log_success "Deploy concluído!"
