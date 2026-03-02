@@ -204,6 +204,16 @@ onMounted(async () => {
 
       <!-- Tabs -->
       <div class="relative mb-6">
+        <!-- Indicador esquerdo (scroll back) -->
+        <button
+          v-if="showScrollIndicatorLeft"
+          @click="scrollTabs('left')"
+          class="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-gray-50 to-transparent sm:hidden flex items-center justify-start pl-1 z-10 hover:from-gray-100 active:from-gray-200 transition-colors cursor-pointer"
+          aria-label="Rolar para esquerda"
+        >
+          <span class="text-gray-600 text-lg font-bold select-none">←</span>
+        </button>
+        
         <div
           ref="tabsContainer"
           class="flex gap-2 overflow-x-auto pb-2 scrollbar-hide -mx-3 px-3 sm:mx-0 sm:px-0"
@@ -245,13 +255,16 @@ onMounted(async () => {
             📬 Recebidos ({{ myReportedEntries.length }})
           </button>
         </div>
-        <!-- Indicador de scroll (mobile only) -->
-        <div
-          v-if="showScrollIndicator"
-          class="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-r from-transparent to-gray-50 pointer-events-none sm:hidden flex items-center justify-end pr-1"
+        
+        <!-- Indicador direito (scroll forward) -->
+        <button
+          v-if="showScrollIndicatorRight"
+          @click="scrollTabs('right')"
+          class="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-gray-50 to-transparent sm:hidden flex items-center justify-end pr-1 z-10 hover:from-gray-100 active:from-gray-200 transition-colors cursor-pointer"
+          aria-label="Rolar para direita"
         >
-          <span class="text-gray-400 text-sm animate-pulse font-bold">→</span>
-        </div>
+          <span class="text-gray-600 text-lg font-bold select-none">→</span>
+        </button>
       </div>
 
       <div v-if="loading" class="text-center py-12">
