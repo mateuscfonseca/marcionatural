@@ -82,7 +82,7 @@ export async function getEntryById(id: number): Promise<UserEntry | undefined> {
 
 export async function getEntriesByUser(userId: number): Promise<UserEntry[]> {
   const stmt = db.prepare(`
-    SELECT 
+    SELECT
       e.*,
       at.name as activity_type_name,
       at.category_id,
@@ -94,7 +94,8 @@ export async function getEntriesByUser(userId: number): Promise<UserEntry[]> {
     WHERE e.user_id = ?
     ORDER BY e.created_at DESC
   `);
-  return stmt.all(userId) as UserEntry[];
+  const entries = stmt.all(userId) as UserEntry[];
+  return normalizeEntries(entries);
 }
 
 export async function getAllEntries(): Promise<UserEntry[]> {
