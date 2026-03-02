@@ -7,9 +7,16 @@ services:
       - uploads_data:/app/uploads/images
     env_file:
       - .env
+    environment:
+      - NODE_ENV=production
     networks:
       - marcionatural-network
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   frontend:
     build: ./app
@@ -21,6 +28,11 @@ services:
     networks:
       - marcionatural-network
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
   sqlite_data:

@@ -1,17 +1,23 @@
 :80 {
     root * /usr/share/caddy
-    file_server
 
-
-    # Servir imagens do backend (uploads)
-    handle /images/* {
-        reverse_proxy backend:3000
-    }
-
+    # API handlers primeiro (prioridade máxima)
     handle /api/* {
         reverse_proxy backend:3000
     }
 
-    # SPA fallback - redireciona todas as rotas para index.html
-    #try_files {path} /index.html
+    handle /images/* {
+        reverse_proxy backend:3000
+    }
+
+    # Static files + SPA fallback (só para rotas frontend)
+    handle {
+        file_server
+        try_files {path} /index.html
+    }
+
+    # Logging para debug
+    log {
+        output stdout
+    }
 }

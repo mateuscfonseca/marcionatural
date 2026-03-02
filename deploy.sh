@@ -49,12 +49,23 @@ deploy() {
     fi
     
     # Remove containers e imagens antigas para forçar rebuild limpo
+    log_info "Parando containers..."
     sudo docker compose down --remove-orphans
+    
+    log_info "Build do frontend..."
     sudo docker compose build --no-cache frontend
+    
+    log_info "Build do backend..."
     sudo docker compose build --no-cache backend
+    
+    log_info "Subindo serviços..."
     sudo docker compose up -d
     
+    log_info "Verificando status dos containers..."
+    sudo docker compose ps
+    
     log_success "Deploy concluído!"
+    log_info "Para ver logs: ./deploy.sh logs"
 }
 
 restart() {
