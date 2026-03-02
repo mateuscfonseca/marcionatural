@@ -134,7 +134,7 @@ function closeModals() {
 </script>
 
 <template>
-  <div class="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40">
+  <div class="fixed bottom-4 sm:bottom-6 mx-auto flex items-center justify-center w-100 z-40">
     <!-- Botão Principal -->
     <button
       @click="isOpen = !isOpen"
@@ -147,7 +147,7 @@ function closeModals() {
     <!-- Opções -->
     <div
       v-if="isOpen"
-      class="absolute bottom-16 right-0 bg-white rounded-xl shadow-xl py-2 min-w-[200px] border border-gray-200"
+      class="absolute bottom-16 bg-white rounded-xl shadow-xl py-2 min-w-[200px] border border-gray-200"
     >
       <button
         @click="openQuickEntry"

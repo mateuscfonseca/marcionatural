@@ -39,15 +39,15 @@ onMounted(async () => {
     <router-view />
   </div>
 
-  <div v-else class="flex min-h-screen bg-gray-100">
+  <div v-else class="flex min-h-screen bg-gray-100 pb-4 sm:pb-10 overflow-x-hidden">
     <Sidebar />
-    <div class="flex-1 flex flex-col">
+    <div class="flex-1 flex flex-col m-3 sm:m-10 w-full min-w-0">
       <Header />
-      <main class="flex-1 overflow-y-auto">
+      <main class="flex-1 overflow-y-auto overflow-x-hidden">
         <router-view />
       </main>
     </div>
-    
+
     <!-- Botão Flutuante de Ação Rápida -->
     <FloatingActionButton />
   </div>

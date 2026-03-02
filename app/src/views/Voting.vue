@@ -137,14 +137,14 @@ onMounted(loadData);
 <template>
   <div class="min-h-screen bg-gray-50 overflow-x-hidden">
     <!-- Header -->
-    <div class="bg-white border-b px-4 py-4 sm:px-6 lg:px-8">
+    <div class="bg-white border-b px-3 sm:px-6 lg:px-8 py-4">
       <h1 class="text-xl sm:text-2xl font-bold text-gray-800">🚩 Votação</h1>
       <p class="text-xs sm:text-sm text-gray-600 mt-1">
         Reporte entradas suspeitas. 3 reports invalidam.
       </p>
     </div>
 
-    <div class="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
+    <div class="p-3 sm:p-6 lg:p-8 w-full max-w-full sm:max-w-7xl mx-auto overflow-hidden">
       <!-- Estatísticas -->
       <div v-if="stats" class="grid grid-cols-2 gap-3 sm:gap-4 mb-6">
         <div class="bg-blue-50 rounded-xl p-3 sm:p-4 border border-blue-200">
@@ -166,7 +166,7 @@ onMounted(loadData);
       </div>
 
       <!-- Tabs -->
-      <div class="flex gap-2 mb-6 overflow-x-auto pb-2">
+      <div class="flex gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide -mx-3 px-3 sm:mx-0 sm:px-0">
         <button
           @click="activeTab = 'available'"
           class="px-3 py-2 rounded-lg font-medium whitespace-nowrap transition-colors text-xs sm:text-sm flex-shrink-0"
@@ -218,21 +218,21 @@ onMounted(loadData);
         <div
           v-for="entry in availableEntries"
           :key="entry.id"
-          class="bg-white rounded-xl shadow-sm border p-4"
+          class="bg-white rounded-xl shadow-sm border p-3 sm:p-4 w-full overflow-hidden"
         >
-          <div class="flex gap-3">
+          <div class="flex gap-2 sm:gap-3">
             <!-- Foto -->
             <div v-if="entry.photo_url" class="flex-shrink-0">
               <img
                 :src="entry.photo_url"
                 :alt="entry.description"
-                class="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-lg"
+                class="w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 object-cover rounded-lg"
               />
             </div>
 
             <div class="flex-1 min-w-0">
               <div class="flex items-start justify-between gap-2 mb-2">
-                <p class="text-gray-800 font-medium text-sm line-clamp-2">{{ entry.description }}</p>
+                <p class="text-gray-800 font-medium text-sm line-clamp-2 break-words">{{ entry.description }}</p>
                 <span
                   class="px-2 py-1 rounded text-xs font-semibold whitespace-nowrap flex-shrink-0"
                   :class="entry.points >= 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
@@ -248,12 +248,12 @@ onMounted(loadData);
                 >
                   {{ getReportBadgeText(entry.report_count) }}
                 </span>
-                <span class="text-xs text-gray-500">👤 {{ entry.username }}</span>
+                <span class="text-xs text-gray-500 truncate max-w-[120px] sm:max-w-none">👤 {{ entry.username }}</span>
               </div>
 
               <button
                 @click="handleReport(entry.id)"
-                class="w-full sm:w-auto px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
+                class="w-full sm:w-auto px-3 sm:px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
               >
                 🚩 Reportar
               </button>
@@ -271,26 +271,26 @@ onMounted(loadData);
         <div
           v-for="entry in invalidatedEntries"
           :key="entry.id"
-          class="bg-red-50 rounded-xl shadow-sm border border-red-200 p-4"
+          class="bg-red-50 rounded-xl shadow-sm border border-red-200 p-3 sm:p-4 w-full overflow-hidden"
         >
-          <div class="flex gap-3">
+          <div class="flex gap-2 sm:gap-3">
             <div v-if="entry.photo_url" class="flex-shrink-0">
               <img
                 :src="entry.photo_url"
                 :alt="entry.description"
-                class="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-lg opacity-75"
+                class="w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 object-cover rounded-lg opacity-75"
               />
             </div>
 
             <div class="flex-1 min-w-0">
               <div class="flex items-start justify-between gap-2 mb-2">
-                <p class="text-gray-800 font-medium text-sm line-clamp-2">{{ entry.description }}</p>
+                <p class="text-gray-800 font-medium text-sm line-clamp-2 break-words">{{ entry.description }}</p>
                 <span class="px-2 py-1 rounded text-xs font-semibold bg-red-600 text-white whitespace-nowrap flex-shrink-0">
                   🚫 {{ entry.report_count }}
                 </span>
               </div>
 
-              <p class="text-xs text-gray-500 mb-2">
+              <p class="text-xs text-gray-500 mb-2 truncate sm:truncate-none">
                 👤 {{ entry.username }} • 📅 {{ formatDate(entry.created_at) }}
               </p>
 
@@ -312,20 +312,20 @@ onMounted(loadData);
         <div
           v-for="entry in myInvalidatedEntries"
           :key="entry.id"
-          class="bg-orange-50 rounded-xl shadow-sm border border-orange-200 p-4"
+          class="bg-orange-50 rounded-xl shadow-sm border border-orange-200 p-3 sm:p-4 w-full overflow-hidden"
         >
-          <div class="flex gap-3">
+          <div class="flex gap-2 sm:gap-3">
             <div v-if="entry.photo_url" class="flex-shrink-0">
               <img
                 :src="entry.photo_url"
                 :alt="entry.description"
-                class="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-lg"
+                class="w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 object-cover rounded-lg"
               />
             </div>
 
             <div class="flex-1 min-w-0">
               <div class="flex items-start justify-between gap-2 mb-2">
-                <p class="text-gray-800 font-medium text-sm line-clamp-2">{{ entry.description }}</p>
+                <p class="text-gray-800 font-medium text-sm line-clamp-2 break-words">{{ entry.description }}</p>
                 <span class="px-2 py-1 rounded text-xs font-semibold bg-orange-600 text-white whitespace-nowrap flex-shrink-0">
                   🚫 {{ entry.report_count }}
                 </span>
@@ -353,20 +353,20 @@ onMounted(loadData);
         <div
           v-for="report in myReports"
           :key="report.id"
-          class="bg-white rounded-xl shadow-sm border p-4"
+          class="bg-white rounded-xl shadow-sm border p-3 sm:p-4 w-full overflow-hidden"
         >
-          <div class="flex gap-3">
+          <div class="flex gap-2 sm:gap-3">
             <div v-if="report.entry_photo_url" class="flex-shrink-0">
               <img
                 :src="report.entry_photo_url"
                 :alt="report.entry_description"
-                class="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-lg"
+                class="w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 object-cover rounded-lg"
               />
             </div>
 
             <div class="flex-1 min-w-0">
               <div class="flex items-start justify-between gap-2 mb-2">
-                <p class="text-gray-800 font-medium text-sm line-clamp-2">{{ report.entry_description }}</p>
+                <p class="text-gray-800 font-medium text-sm line-clamp-2 break-words">{{ report.entry_description }}</p>
                 <span
                   class="px-2 py-1 rounded text-xs font-semibold whitespace-nowrap flex-shrink-0"
                   :class="report.entry_points >= 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
@@ -376,12 +376,12 @@ onMounted(loadData);
               </div>
 
               <div class="flex items-center gap-2 mb-2 flex-wrap">
-                <span class="px-2 py-1 rounded text-xs font-semibold bg-purple-100 text-purple-800">
-                  📝 Reportado em {{ formatDate(report.report_created_at).split(' ')[0] }}
+                <span class="px-2 py-1 rounded text-xs font-semibold bg-purple-100 text-purple-800 whitespace-nowrap">
+                  📝 {{ formatDate(report.report_created_at).split(' ')[0] }}
                 </span>
-                <span class="text-xs text-gray-500">👤 {{ report.owner_username }}</span>
+                <span class="text-xs text-gray-500 truncate max-w-[120px] sm:max-w-none">👤 {{ report.owner_username }}</span>
                 <span
-                  class="px-2 py-1 rounded text-xs font-semibold"
+                  class="px-2 py-1 rounded text-xs font-semibold whitespace-nowrap"
                   :class="report.entry_is_invalidated ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'"
                 >
                   {{ report.entry_is_invalidated ? '🚫 Invalidada' : `⚠️ ${report.report_count}/3` }}
@@ -390,7 +390,7 @@ onMounted(loadData);
 
               <button
                 @click="handleRemoveReportFromMyReports(report.id, report.entry_id)"
-                class="w-full sm:w-auto px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
+                class="w-full sm:w-auto px-3 sm:px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
               >
                 🗑️ Remover Report
               </button>
@@ -409,20 +409,20 @@ onMounted(loadData);
         <div
           v-for="entry in myReportedEntries"
           :key="entry.id"
-          class="bg-white rounded-xl shadow-sm border p-4"
+          class="bg-white rounded-xl shadow-sm border p-3 sm:p-4 w-full overflow-hidden"
         >
-          <div class="flex gap-3">
+          <div class="flex gap-2 sm:gap-3">
             <div v-if="entry.photo_url" class="flex-shrink-0">
               <img
                 :src="entry.photo_url"
                 :alt="entry.description"
-                class="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-lg"
+                class="w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 object-cover rounded-lg"
               />
             </div>
 
             <div class="flex-1 min-w-0">
               <div class="flex items-start justify-between gap-2 mb-2">
-                <p class="text-gray-800 font-medium text-sm line-clamp-2">{{ entry.description }}</p>
+                <p class="text-gray-800 font-medium text-sm line-clamp-2 break-words">{{ entry.description }}</p>
                 <span
                   class="px-2 py-1 rounded text-xs font-semibold whitespace-nowrap flex-shrink-0"
                   :class="entry.points >= 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
@@ -432,11 +432,11 @@ onMounted(loadData);
               </div>
 
               <div class="flex items-center gap-2 mb-2 flex-wrap">
-                <span class="px-2 py-1 rounded text-xs font-semibold bg-pink-100 text-pink-800">
-                  📬 Reportada em {{ entry.report_created_at ? formatDate(entry.report_created_at).split(' ')[0] : 'N/A' }}
+                <span class="px-2 py-1 rounded text-xs font-semibold bg-pink-100 text-pink-800 whitespace-nowrap">
+                  📬 {{ entry.report_created_at ? formatDate(entry.report_created_at).split(' ')[0] : 'N/A' }}
                 </span>
                 <span
-                  class="px-2 py-1 rounded text-xs font-semibold"
+                  class="px-2 py-1 rounded text-xs font-semibold whitespace-nowrap"
                   :class="entry.is_invalidated ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'"
                 >
                   {{ entry.is_invalidated ? '🚫 Invalidada' : `⚠️ ${entry.report_count}/3` }}
