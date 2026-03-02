@@ -134,7 +134,7 @@ function closeModals() {
 </script>
 
 <template>
-  <div class="fixed bottom-4 sm:bottom-6 mx-auto flex items-center justify-center w-100 z-40">
+  <div class="fixed bottom-4 sm:bottom-6 mx-auto flex items-center justify-center w-full z-40">
     <!-- Botão Principal -->
     <button
       @click="isOpen = !isOpen"
