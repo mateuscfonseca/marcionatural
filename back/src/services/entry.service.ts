@@ -21,6 +21,27 @@ export interface UserEntry {
   is_activity_validated?: boolean;
 }
 
+/**
+ * Converte data do SQLite (sem timezone) para ISO 8601 com Z (UTC)
+ * O SQLite retorna "2026-03-03 02:00:00", assumimos que é UTC e adicionamos 'Z'
+ */
+function toUTCDate(dateStr: string | null): string | null {
+  if (!dateStr) return null;
+  // SQLite retorna "YYYY-MM-DD HH:MM:SS", adicionamos Z para indicar UTC
+  return new Date(dateStr + 'Z').toISOString();
+}
+
+/**
+ * Converte array de entradas para formato UTC ISO 8601
+ */
+function normalizeEntries(entries: UserEntry[]): UserEntry[] {
+  return entries.map(e => ({
+    ...e,
+    created_at: toUTCDate(e.created_at)!,
+    invalidated_at: toUTCDate(e.invalidated_at),
+  }));
+}
+
 export interface CreateEntryDTO {
   userId: number;
   activityTypeId: number;
@@ -39,7 +60,7 @@ export interface UpdateEntryDTO {
 
 export async function getEntryById(id: number): Promise<UserEntry | undefined> {
   const stmt = db.prepare(`
-    SELECT 
+    SELECT
       e.*,
       at.name as activity_type_name,
       at.category_id,
@@ -50,7 +71,13 @@ export async function getEntryById(id: number): Promise<UserEntry | undefined> {
     INNER JOIN categories c ON at.category_id = c.id
     WHERE e.id = ?
   `);
-  return stmt.get(id) as UserEntry | undefined;
+  const entry = stmt.get(id) as UserEntry | undefined;
+  if (!entry) return undefined;
+  return {
+    ...entry,
+    created_at: toUTCDate(entry.created_at)!,
+    invalidated_at: toUTCDate(entry.invalidated_at),
+  };
 }
 
 export async function getEntriesByUser(userId: number): Promise<UserEntry[]> {
