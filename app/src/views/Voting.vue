@@ -41,7 +41,8 @@ const stats = ref<VotingStats | null>(null);
 const loading = ref(true);
 const activeTab = ref<'available' | 'invalidated' | 'my-invalidated' | 'my-reports' | 'received-reports'>('available');
 const tabsContainer = ref<HTMLElement | null>(null);
-const showScrollIndicator = ref(true);
+const showScrollIndicatorLeft = ref(false);
+const showScrollIndicatorRight = ref(true);
 
 async function loadData() {
   try {
@@ -133,11 +134,33 @@ function getReportBadgeText(reportCount: number): string {
   return `⚠️ ${reportCount}/3`;
 }
 
+function scrollTabs(direction: 'left' | 'right') {
+  if (!tabsContainer.value) return;
+  
+  const scrollAmount = 250; // ~1 tab completa
+  const currentScroll = tabsContainer.value.scrollLeft;
+  const maxScroll = tabsContainer.value.scrollWidth - tabsContainer.value.clientWidth;
+  
+  let targetScroll = direction === 'right' 
+    ? currentScroll + scrollAmount 
+    : currentScroll - scrollAmount;
+  
+  // Limitar ao máximo/mínimo com margem de segurança
+  targetScroll = Math.max(0, Math.min(targetScroll, maxScroll));
+  
+  tabsContainer.value.scrollTo({
+    left: targetScroll,
+    behavior: 'smooth'
+  });
+}
+
 function updateScrollIndicator() {
   if (tabsContainer.value) {
     const { scrollLeft, scrollWidth, clientWidth } = tabsContainer.value;
-    // Mostra o indicador se não estiver no final do scroll (com margem de 10px)
-    showScrollIndicator.value = scrollLeft + clientWidth < scrollWidth - 10;
+    // Indicador esquerdo: mostra quando scroll > 10px
+    showScrollIndicatorLeft.value = scrollLeft > 10;
+    // Indicador direito: mostra quando não chegou no final (com margem de 10px)
+    showScrollIndicatorRight.value = scrollLeft + clientWidth < scrollWidth - 10;
   }
 }
 
