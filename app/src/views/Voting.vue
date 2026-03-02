@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, nextTick } from 'vue';
 import {
   getVotingAvailableEntries,
   getVotingInvalidatedEntries,
@@ -40,6 +40,8 @@ const myReportedEntries = ref<Array<{
 const stats = ref<VotingStats | null>(null);
 const loading = ref(true);
 const activeTab = ref<'available' | 'invalidated' | 'my-invalidated' | 'my-reports' | 'received-reports'>('available');
+const tabsContainer = ref<HTMLElement | null>(null);
+const showScrollIndicator = ref(true);
 
 async function loadData() {
   try {
@@ -131,7 +133,19 @@ function getReportBadgeText(reportCount: number): string {
   return `⚠️ ${reportCount}/3`;
 }
 
-onMounted(loadData);
+function updateScrollIndicator() {
+  if (tabsContainer.value) {
+    const { scrollLeft, scrollWidth, clientWidth } = tabsContainer.value;
+    // Mostra o indicador se não estiver no final do scroll (com margem de 10px)
+    showScrollIndicator.value = scrollLeft + clientWidth < scrollWidth - 10;
+  }
+}
+
+onMounted(async () => {
+  await loadData();
+  await nextTick();
+  updateScrollIndicator();
+});
 </script>
 
 <template>
@@ -166,42 +180,55 @@ onMounted(loadData);
       </div>
 
       <!-- Tabs -->
-      <div class="flex gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide -mx-3 px-3 sm:mx-0 sm:px-0">
-        <button
-          @click="activeTab = 'available'"
-          class="px-3 py-2 rounded-lg font-medium whitespace-nowrap transition-colors text-xs sm:text-sm flex-shrink-0"
-          :class="activeTab === 'available' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+      <div class="relative mb-6">
+        <div
+          ref="tabsContainer"
+          class="flex gap-2 overflow-x-auto pb-2 scrollbar-hide -mx-3 px-3 sm:mx-0 sm:px-0"
+          @scroll="updateScrollIndicator"
         >
-          📋 Para Votar ({{ availableEntries.length }})
-        </button>
-        <button
-          @click="activeTab = 'invalidated'"
-          class="px-3 py-2 rounded-lg font-medium whitespace-nowrap transition-colors text-xs sm:text-sm flex-shrink-0"
-          :class="activeTab === 'invalidated' ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+          <button
+            @click="activeTab = 'available'"
+            class="px-3 py-2 rounded-lg font-medium whitespace-nowrap transition-colors text-xs sm:text-sm flex-shrink-0"
+            :class="activeTab === 'available' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+          >
+            📋 Para Votar ({{ availableEntries.length }})
+          </button>
+          <button
+            @click="activeTab = 'invalidated'"
+            class="px-3 py-2 rounded-lg font-medium whitespace-nowrap transition-colors text-xs sm:text-sm flex-shrink-0"
+            :class="activeTab === 'invalidated' ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+          >
+            🚫 Invalidadas ({{ invalidatedEntries.length }})
+          </button>
+          <button
+            @click="activeTab = 'my-invalidated'"
+            class="px-3 py-2 rounded-lg font-medium whitespace-nowrap transition-colors text-xs sm:text-sm flex-shrink-0"
+            :class="activeTab === 'my-invalidated' ? 'bg-orange-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+          >
+            ⚠️ Minhas ({{ myInvalidatedEntries.length }})
+          </button>
+          <button
+            @click="activeTab = 'my-reports'"
+            class="px-3 py-2 rounded-lg font-medium whitespace-nowrap transition-colors text-xs sm:text-sm flex-shrink-0"
+            :class="activeTab === 'my-reports' ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+          >
+            📝 Meus Reports ({{ myReports.length }})
+          </button>
+          <button
+            @click="activeTab = 'received-reports'"
+            class="px-3 py-2 rounded-lg font-medium whitespace-nowrap transition-colors text-xs sm:text-sm flex-shrink-0"
+            :class="activeTab === 'received-reports' ? 'bg-pink-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+          >
+            📬 Recebidos ({{ myReportedEntries.length }})
+          </button>
+        </div>
+        <!-- Indicador de scroll (mobile only) -->
+        <div
+          v-if="showScrollIndicator"
+          class="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-r from-transparent to-gray-50 pointer-events-none sm:hidden flex items-center justify-end pr-1"
         >
-          🚫 Invalidadas ({{ invalidatedEntries.length }})
-        </button>
-        <button
-          @click="activeTab = 'my-invalidated'"
-          class="px-3 py-2 rounded-lg font-medium whitespace-nowrap transition-colors text-xs sm:text-sm flex-shrink-0"
-          :class="activeTab === 'my-invalidated' ? 'bg-orange-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
-        >
-          ⚠️ Minhas ({{ myInvalidatedEntries.length }})
-        </button>
-        <button
-          @click="activeTab = 'my-reports'"
-          class="px-3 py-2 rounded-lg font-medium whitespace-nowrap transition-colors text-xs sm:text-sm flex-shrink-0"
-          :class="activeTab === 'my-reports' ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
-        >
-          📝 Meus Reports ({{ myReports.length }})
-        </button>
-        <button
-          @click="activeTab = 'received-reports'"
-          class="px-3 py-2 rounded-lg font-medium whitespace-nowrap transition-colors text-xs sm:text-sm flex-shrink-0"
-          :class="activeTab === 'received-reports' ? 'bg-pink-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
-        >
-          📬 Recebidos ({{ myReportedEntries.length }})
-        </button>
+          <span class="text-gray-400 text-sm animate-pulse font-bold">→</span>
+        </div>
       </div>
 
       <div v-if="loading" class="text-center py-12">
