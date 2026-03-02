@@ -31,18 +31,52 @@ export interface WeeklyProgress {
   dailyLogs: ProjectDailyLog[];
 }
 
+/**
+ * Converte data do SQLite (sem timezone) para ISO 8601 com Z (UTC)
+ */
+function toUTCDate(dateStr: string | null): string | null {
+  if (!dateStr) return null;
+  return new Date(dateStr + 'Z').toISOString();
+}
+
+/**
+ * Converte array de projetos para formato UTC ISO 8601
+ */
+function normalizeProjects(projects: PersonalProject[]): PersonalProject[] {
+  return projects.map(p => ({
+    ...p,
+    created_at: toUTCDate(p.created_at)!,
+  }));
+}
+
+/**
+ * Converte array de logs para formato UTC ISO 8601
+ */
+function normalizeLogs(logs: ProjectDailyLog[]): ProjectDailyLog[] {
+  return logs.map(log => ({
+    ...log,
+    created_at: toUTCDate(log.created_at)!,
+  }));
+}
+
 export async function getProjectsByUser(userId: number): Promise<PersonalProject[]> {
   const stmt = db.prepare(`
     SELECT * FROM personal_projects
     WHERE user_id = ?
     ORDER BY created_at DESC
   `);
-  return stmt.all(userId) as PersonalProject[];
+  const projects = stmt.all(userId) as PersonalProject[];
+  return normalizeProjects(projects);
 }
 
 export async function getProjectById(id: number, userId: number): Promise<PersonalProject | undefined> {
   const stmt = db.prepare('SELECT * FROM personal_projects WHERE id = ? AND user_id = ?');
-  return stmt.get(id, userId) as PersonalProject | undefined;
+  const project = stmt.get(id, userId) as PersonalProject | undefined;
+  if (!project) return undefined;
+  return {
+    ...project,
+    created_at: toUTCDate(project.created_at)!,
+  };
 }
 
 export async function createProject(
@@ -226,7 +260,7 @@ export async function getWeeklyProgress(
     goalMinutes,
     goalReached,
     percentage,
-    dailyLogs: logs,
+    dailyLogs: normalizeLogs(logs),
   };
 }
 

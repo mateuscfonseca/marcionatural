@@ -18,9 +18,28 @@ export interface ValidationStatus {
   negativePercentage: number;
 }
 
+/**
+ * Converte data do SQLite (sem timezone) para ISO 8601 com Z (UTC)
+ */
+function toUTCDate(dateStr: string | null): string | null {
+  if (!dateStr) return null;
+  return new Date(dateStr + 'Z').toISOString();
+}
+
+/**
+ * Converte array de votos para formato UTC ISO 8601
+ */
+function normalizeVotes(votes: ActivityTypeVote[]): ActivityTypeVote[] {
+  return votes.map(v => ({
+    ...v,
+    created_at: toUTCDate(v.created_at)!,
+  }));
+}
+
 export async function getVotesByActivityType(activityTypeId: number): Promise<ActivityTypeVote[]> {
   const stmt = db.prepare('SELECT * FROM activity_type_votes WHERE activity_type_id = ?');
-  return stmt.all(activityTypeId) as ActivityTypeVote[];
+  const votes = stmt.all(activityTypeId) as ActivityTypeVote[];
+  return normalizeVotes(votes);
 }
 
 export async function hasUserVoted(userId: number, activityTypeId: number): Promise<boolean> {

@@ -19,6 +19,24 @@ export interface EntryReportStats {
 }
 
 /**
+ * Converte data do SQLite (sem timezone) para ISO 8601 com Z (UTC)
+ */
+function toUTCDate(dateStr: string | null): string | null {
+  if (!dateStr) return null;
+  return new Date(dateStr + 'Z').toISOString();
+}
+
+/**
+ * Converte array de reports para formato UTC ISO 8601
+ */
+function normalizeReports(reports: EntryReport[]): EntryReport[] {
+  return reports.map(r => ({
+    ...r,
+    created_at: toUTCDate(r.created_at)!,
+  }));
+}
+
+/**
  * Cria um report de entrada
  */
 export async function createEntryReport(
@@ -82,7 +100,8 @@ export async function getReportsByEntry(
     WHERE entry_id = ?
     ORDER BY created_at DESC
   `);
-  return stmt.all(entryId) as EntryReport[];
+  const reports = stmt.all(entryId) as EntryReport[];
+  return normalizeReports(reports);
 }
 
 /**
@@ -102,7 +121,11 @@ export async function getReportsByEntryWithDetails(
     WHERE er.entry_id = ?
     ORDER BY er.created_at DESC
   `);
-  return stmt.all(entryId) as EntryReportWithDetails[];
+  const reports = stmt.all(entryId) as EntryReportWithDetails[];
+  return reports.map(r => ({
+    ...r,
+    created_at: toUTCDate(r.created_at)!,
+  }));
 }
 
 /**
@@ -237,7 +260,7 @@ export async function getEntriesAvailableToReport(
     LIMIT ?
   `);
 
-  return stmt.all(userId, userId, limit) as Array<{
+  const entries = stmt.all(userId, userId, limit) as Array<{
     id: number;
     user_id: number;
     username: string;
@@ -248,6 +271,11 @@ export async function getEntriesAvailableToReport(
     report_count: number;
     is_invalidated: boolean;
   }>;
+
+  return entries.map(e => ({
+    ...e,
+    created_at: toUTCDate(e.created_at)!,
+  }));
 }
 
 /**
@@ -281,7 +309,7 @@ export async function getInvalidatedEntries(): Promise<Array<{
     ORDER BY e.invalidated_at DESC
   `);
 
-  return stmt.all() as Array<{
+  const entries = stmt.all() as Array<{
     id: number;
     user_id: number;
     username: string;
@@ -292,6 +320,12 @@ export async function getInvalidatedEntries(): Promise<Array<{
     invalidated_at: string | null;
     report_count: number;
   }>;
+
+  return entries.map(e => ({
+    ...e,
+    created_at: toUTCDate(e.created_at)!,
+    invalidated_at: toUTCDate(e.invalidated_at),
+  }));
 }
 
 /**
@@ -322,7 +356,7 @@ export async function getUserInvalidatedEntries(
     ORDER BY e.invalidated_at DESC
   `);
 
-  return stmt.all(userId) as Array<{
+  const entries = stmt.all(userId) as Array<{
     id: number;
     description: string;
     photo_url: string | null;
@@ -331,6 +365,12 @@ export async function getUserInvalidatedEntries(
     invalidated_at: string | null;
     report_count: number;
   }>;
+
+  return entries.map(e => ({
+    ...e,
+    created_at: toUTCDate(e.created_at)!,
+    invalidated_at: toUTCDate(e.invalidated_at),
+  }));
 }
 
 /**
@@ -366,7 +406,7 @@ export async function getMyEntriesWithReports(
     ORDER BY report_created_at DESC
   `);
 
-  return stmt.all(userId) as Array<{
+  const entries = stmt.all(userId) as Array<{
     id: number;
     description: string;
     photo_url: string | null;
@@ -376,6 +416,12 @@ export async function getMyEntriesWithReports(
     report_count: number;
     report_created_at: string | null;
   }>;
+
+  return entries.map(e => ({
+    ...e,
+    created_at: toUTCDate(e.created_at)!,
+    report_created_at: toUTCDate(e.report_created_at),
+  }));
 }
 
 /**
@@ -459,7 +505,7 @@ export async function getMyReports(
     ORDER BY er.created_at DESC
   `);
 
-  return stmt.all(userId) as Array<{
+  const reports = stmt.all(userId) as Array<{
     id: number;
     entry_id: number;
     entry_description: string;
@@ -471,4 +517,10 @@ export async function getMyReports(
     owner_username: string;
     report_count: number;
   }>;
+
+  return reports.map(r => ({
+    ...r,
+    entry_created_at: toUTCDate(r.entry_created_at)!,
+    report_created_at: toUTCDate(r.report_created_at)!,
+  }));
 }

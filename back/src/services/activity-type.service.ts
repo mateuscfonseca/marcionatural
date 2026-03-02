@@ -16,9 +16,27 @@ export interface ActivityType {
   total_votes?: number;
 }
 
+/**
+ * Converte data do SQLite (sem timezone) para ISO 8601 com Z (UTC)
+ */
+function toUTCDate(dateStr: string | null): string | null {
+  if (!dateStr) return null;
+  return new Date(dateStr + 'Z').toISOString();
+}
+
+/**
+ * Converte array de activity types para formato UTC ISO 8601
+ */
+function normalizeActivityTypes(types: ActivityType[]): ActivityType[] {
+  return types.map(t => ({
+    ...t,
+    created_at: toUTCDate(t.created_at)!,
+  }));
+}
+
 export async function getAllActivityTypes(): Promise<ActivityType[]> {
   const stmt = db.prepare(`
-    SELECT 
+    SELECT
       at.*,
       c.name as category_name,
       COALESCE(SUM(CASE WHEN v.vote_type = 1 THEN 1 ELSE 0 END), 0) as positive_votes,
@@ -30,12 +48,13 @@ export async function getAllActivityTypes(): Promise<ActivityType[]> {
     GROUP BY at.id
     ORDER BY at.category_id, at.name
   `);
-  return stmt.all() as ActivityType[];
+  const types = stmt.all() as ActivityType[];
+  return normalizeActivityTypes(types);
 }
 
 export async function getActivityTypesByCategory(categoryId: number): Promise<ActivityType[]> {
   const stmt = db.prepare(`
-    SELECT 
+    SELECT
       at.*,
       c.name as category_name,
       COALESCE(SUM(CASE WHEN v.vote_type = 1 THEN 1 ELSE 0 END), 0) as positive_votes,
@@ -48,19 +67,25 @@ export async function getActivityTypesByCategory(categoryId: number): Promise<Ac
     GROUP BY at.id
     ORDER BY at.name
   `);
-  return stmt.all(categoryId) as ActivityType[];
+  const types = stmt.all(categoryId) as ActivityType[];
+  return normalizeActivityTypes(types);
 }
 
 export async function getActivityTypeById(id: number): Promise<ActivityType | undefined> {
   const stmt = db.prepare(`
-    SELECT 
+    SELECT
       at.*,
       c.name as category_name
     FROM activity_types at
     LEFT JOIN categories c ON at.category_id = c.id
     WHERE at.id = ?
   `);
-  return stmt.get(id) as ActivityType | undefined;
+  const type = stmt.get(id) as ActivityType | undefined;
+  if (!type) return undefined;
+  return {
+    ...type,
+    created_at: toUTCDate(type.created_at)!,
+  };
 }
 
 export async function createActivityType(
@@ -105,7 +130,7 @@ export async function findActivityTypeByName(name: string, categoryId: number): 
 
 export async function getValidatedActivityTypes(): Promise<ActivityType[]> {
   const stmt = db.prepare(`
-    SELECT 
+    SELECT
       at.*,
       c.name as category_name
     FROM activity_types at
@@ -113,13 +138,14 @@ export async function getValidatedActivityTypes(): Promise<ActivityType[]> {
     WHERE at.is_validated = TRUE
     ORDER BY at.category_id, at.name
   `);
-  return stmt.all() as ActivityType[];
+  const types = stmt.all() as ActivityType[];
+  return normalizeActivityTypes(types);
 }
 
 export async function getActivityTypesForUser(userId: number): Promise<ActivityType[]> {
   // Retorna activity_types validados + os criados pelo usuário
   const stmt = db.prepare(`
-    SELECT 
+    SELECT
       at.*,
       c.name as category_name
     FROM activity_types at
@@ -127,5 +153,6 @@ export async function getActivityTypesForUser(userId: number): Promise<ActivityT
     WHERE at.is_validated = TRUE OR at.created_by_user_id = ?
     ORDER BY at.category_id, at.name
   `);
-  return stmt.all(userId) as ActivityType[];
+  const types = stmt.all(userId) as ActivityType[];
+  return normalizeActivityTypes(types);
 }
