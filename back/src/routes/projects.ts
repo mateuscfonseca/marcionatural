@@ -10,6 +10,7 @@ import {
   getWeeklyProgress,
   getCurrentWeekProgress,
   getProjectTotalPoints,
+  getUserProjectsWithProgress,
 } from '../services/projects.service';
 
 const projects = new Hono();
@@ -213,6 +214,24 @@ projects.get('/:id/weekly-progress', async (c) => {
     return c.json({ progress });
   } catch (error) {
     console.error('Erro ao buscar progresso:', error);
+    return c.json({ error: 'Erro interno do servidor' }, 500);
+  }
+});
+
+// Projetos de um usuário com progresso (para visualização pública)
+projects.get('/user/:userId/with-progress', async (c) => {
+  try {
+    const userId = parseInt(c.req.param('userId'));
+
+    if (isNaN(userId)) {
+      return c.json({ error: 'ID de usuário inválido' }, 400);
+    }
+
+    const projects = await getUserProjectsWithProgress(userId);
+
+    return c.json({ projects });
+  } catch (error) {
+    console.error('Erro ao buscar projetos com progresso:', error);
     return c.json({ error: 'Erro interno do servidor' }, 500);
   }
 });

@@ -32,6 +32,31 @@ export interface LeaderboardUser {
   valid_entries_count: number;
 }
 
+export interface LeaderboardUserWithMovement extends LeaderboardUser {
+  position: number;
+  previousPosition: number | null;
+  positionDiff: number;
+  movement: 'up' | 'down' | 'same';
+}
+
+export interface TimelineEntry {
+  id: number;
+  user_id: number;
+  username: string;
+  activity_type_id: number;
+  activity_type_name: string;
+  category_id: number;
+  category_name: string;
+  description: string;
+  photo_url: string | null;
+  photo_identifier: string | null;
+  photo_original_name: string | null;
+  points: number;
+  entry_date: string;
+  created_at: string;
+  is_invalidated: boolean;
+}
+
 export interface ActivityType {
   id: number;
   name: string;
@@ -71,6 +96,15 @@ export interface PersonalProject {
   is_active: boolean;
   created_at: string;
   total_points?: number;
+}
+
+export interface ProjectWithProgress extends PersonalProject {
+  totalMinutes: number;
+  goalMinutes: number;
+  goalReached: boolean;
+  percentage: number;
+  weekNumber: number;
+  year: number;
 }
 
 export interface ProjectDailyLog {

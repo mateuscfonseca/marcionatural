@@ -10,6 +10,7 @@ import votesRoutes from './routes/votes';
 import activityTypesRoutes from './routes/activity-types';
 import projectsRoutes from './routes/projects';
 import uploadRoutes from './routes/upload';
+import timelineRoutes from './routes/timeline';
 import { join } from 'path';
 import { existsSync } from 'fs';
 
@@ -40,6 +41,7 @@ app.route('/api/votes', votesRoutes);
 app.route('/api/activity-types', activityTypesRoutes);
 app.route('/api/projects', projectsRoutes);
 app.route('/api/upload', uploadRoutes);
+app.route('/api/timeline', timelineRoutes);
 
 // Health check
 app.get('/api/health', (c) => {

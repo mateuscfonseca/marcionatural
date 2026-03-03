@@ -31,6 +31,15 @@ export interface WeeklyProgress {
   dailyLogs: ProjectDailyLog[];
 }
 
+export interface ProjectWithProgress extends PersonalProject {
+  totalMinutes: number;
+  goalMinutes: number;
+  goalReached: boolean;
+  percentage: number;
+  weekNumber: number;
+  year: number;
+}
+
 /**
  * Converte data do SQLite (sem timezone) para ISO 8601 com Z (UTC)
  */
@@ -302,4 +311,49 @@ export async function getProjectTotalPoints(userId: number, projectId: number): 
   }
 
   return totalPoints;
+}
+
+/**
+ * Obtém projetos de um usuário com progresso da semana atual
+ */
+export async function getUserProjectsWithProgress(userId: number): Promise<ProjectWithProgress[]> {
+  const { week, year } = getWeekNumber(new Date());
+
+  // Busca projetos ativos do usuário
+  const projectsStmt = db.prepare(`
+    SELECT * FROM personal_projects
+    WHERE user_id = ? AND is_active = 1
+    ORDER BY created_at DESC
+  `);
+  const projects = projectsStmt.all(userId) as PersonalProject[];
+
+  const projectsWithProgress: ProjectWithProgress[] = [];
+
+  for (const project of projects) {
+    // Busca logs da semana atual para este projeto
+    const logsStmt = db.prepare(`
+      SELECT SUM(duration_minutes) as totalMinutes
+      FROM project_daily_logs
+      WHERE project_id = ? AND user_id = ? AND week_number = ? AND year = ?
+    `);
+    const result = logsStmt.get(project.id, userId, week, year) as { totalMinutes: number } | undefined;
+
+    const totalMinutes = result?.totalMinutes || 0;
+    const goalMinutes = project.weekly_hours_goal * 60;
+    const goalReached = totalMinutes >= goalMinutes;
+    const percentage = Math.min(100, (totalMinutes / goalMinutes) * 100);
+
+    projectsWithProgress.push({
+      ...project,
+      created_at: toUTCDate(project.created_at)!,
+      totalMinutes,
+      goalMinutes,
+      goalReached,
+      percentage,
+      weekNumber: week,
+      year,
+    });
+  }
+
+  return projectsWithProgress;
 }

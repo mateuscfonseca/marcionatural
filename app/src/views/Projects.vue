@@ -6,11 +6,11 @@ import {
   updateProject,
   deleteProject,
   getProjectWeeklyProgress,
-  logProjectTime,
 } from '@/services/api';
 import type { PersonalProject, WeeklyProgress } from '@/types';
 import { useToast } from '@/composables/useToast';
 import { createApiErrorHandler } from '@/utils/handleApiError';
+import ProjectLogModal from '@/components/ProjectLogModal.vue';
 
 const projects = ref<PersonalProject[]>([]);
 const loading = ref(true);
@@ -28,10 +28,6 @@ const handleApiError = createApiErrorHandler();
 const name = ref('');
 const description = ref('');
 const weeklyHoursGoal = ref(5);
-
-// Log form
-const logDuration = ref(30);
-const logDate = ref(new Date().toISOString().split('T')[0]);
 
 async function loadProjects() {
   try {
@@ -96,21 +92,7 @@ async function handleDelete(id: number) {
 
 function openLogModal(project: PersonalProject) {
   selectedProject.value = project;
-  logDuration.value = 30;
-  logDate.value = new Date().toISOString().split('T')[0];
   showLogModal.value = true;
-}
-
-async function handleLogTime() {
-  if (!selectedProject.value) return;
-  try {
-    await logProjectTime(selectedProject.value.id, logDuration.value, logDate.value || undefined);
-    showLogModal.value = false;
-    await loadProjects();
-    success('Tempo registrado com sucesso!');
-  } catch (error) {
-    handleApiError(error, 'Erro ao registrar tempo');
-  }
 }
 
 async function viewProgress(project: PersonalProject) {
@@ -280,52 +262,11 @@ onMounted(loadProjects);
     </div>
 
     <!-- Modal Registrar Tempo -->
-    <div v-if="showLogModal" class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full">
-        <div class="p-4 sm:p-6 border-b flex justify-between items-center">
-          <h2 class="text-lg sm:text-xl font-bold text-gray-800">
-            ⏱️ Registrar Tempo - {{ selectedProject?.name }}
-          </h2>
-        </div>
-
-        <form @submit.prevent="handleLogTime" class="p-4 sm:p-6 space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Duração (minutos)</label>
-            <input
-              v-model.number="logDuration"
-              type="number"
-              min="1"
-              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-sm sm:text-base"
-            />
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Data</label>
-            <input
-              v-model="logDate"
-              type="date"
-              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-sm sm:text-base"
-            />
-          </div>
-
-          <div class="flex gap-3 pt-4">
-            <button
-              type="button"
-              @click="showLogModal = false"
-              class="flex-1 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm sm:text-base font-medium"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              class="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm sm:text-base font-medium"
-            >
-              Registrar
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <ProjectLogModal
+      v-model="showLogModal"
+      :project="selectedProject"
+      @submitted="loadProjects"
+    />
 
     <!-- Modal Progresso Semanal -->
     <div v-if="showProgressModal && currentProgress" class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">

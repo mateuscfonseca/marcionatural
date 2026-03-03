@@ -8,6 +8,7 @@ const { isOpen, close } = useSidebar();
 
 const menuItems = [
   { name: 'Leaderboard', path: '/leaderboard', icon: '🏆' },
+  { name: 'Timeline', path: '/timeline', icon: '📰' },
   { name: 'Minhas Entradas', path: '/my-entries', icon: '📝' },
   { name: 'Votação', path: '/voting', icon: '🚩' },
   { name: 'Projetos', path: '/projects', icon: '📚' },

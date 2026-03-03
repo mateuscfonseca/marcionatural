@@ -1,18 +1,18 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { getLeaderboard } from '@/services/api';
-import type { LeaderboardUser } from '@/types';
+import { getLeaderboardWithMovement } from '@/services/api';
+import type { LeaderboardUserWithMovement } from '@/types';
 
 const router = useRouter();
-const leaderboard = ref<LeaderboardUser[]>([]);
+const leaderboard = ref<LeaderboardUserWithMovement[]>([]);
 const loading = ref(true);
 
 let pollingInterval: ReturnType<typeof setInterval> | null = null;
 
 async function loadLeaderboard() {
   try {
-    const data = await getLeaderboard();
+    const data = await getLeaderboardWithMovement();
     leaderboard.value = data.leaderboard;
   } catch (error) {
     console.error('Erro ao carregar leaderboard:', error);
@@ -27,6 +27,22 @@ function formatPoints(points: number): string {
 
 function viewUserEntries(userId: number) {
   router.push(`/users/${userId}/entries`);
+}
+
+function getMovementIcon(user: LeaderboardUserWithMovement) {
+  if (user.movement === 'up') {
+    return { icon: '↑', class: 'text-green-600', bg: 'bg-green-50' };
+  } else if (user.movement === 'down') {
+    return { icon: '↓', class: 'text-red-600', bg: 'bg-red-50' };
+  } else {
+    return { icon: '—', class: 'text-gray-400', bg: 'bg-gray-50' };
+  }
+}
+
+function getMovementText(user: LeaderboardUserWithMovement): string {
+  if (user.positionDiff === 0) return '';
+  if (user.positionDiff > 0) return `+${user.positionDiff}`;
+  return `${user.positionDiff}`;
 }
 
 // Inicia polling de 10 segundos
@@ -55,10 +71,14 @@ onUnmounted(() => {
         <h1 class="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-800">🏆 Leaderboard</h1>
         <p class="text-sm text-gray-600 mt-1 sm:hidden">Ranking de usuários</p>
       </div>
-      <div class="flex items-center gap-2 text-xs sm:text-sm text-gray-500">
-        <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-        <span class="hidden sm:inline">Atualizando a cada 10s</span>
-        <span class="sm:hidden">Ao vivo</span>
+      <div class="flex flex-col sm:flex-row items-start sm:items-center gap-2 text-xs sm:text-sm text-gray-500">
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+          <span class="hidden sm:inline">Atualizando a cada 10s</span>
+          <span class="sm:hidden">Ao vivo</span>
+        </div>
+        <span class="hidden sm:inline text-gray-300">|</span>
+        <span class="text-xs">📊 Comparado ao dia anterior</span>
       </div>
     </div>
 
@@ -83,6 +103,9 @@ onUnmounted(() => {
               </th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Entradas
+              </th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Movimentação
               </th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Ações
@@ -114,6 +137,23 @@ onUnmounted(() => {
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-gray-600">
                 {{ user.valid_entries_count }}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="flex items-center gap-2">
+                  <span
+                    class="w-8 h-8 rounded-full flex items-center justify-center text-lg font-bold"
+                    :class="getMovementIcon(user).bg"
+                  >
+                    <span :class="getMovementIcon(user).class">{{ getMovementIcon(user).icon }}</span>
+                  </span>
+                  <span
+                    v-if="user.positionDiff !== 0"
+                    class="text-sm font-semibold"
+                    :class="user.movement === 'up' ? 'text-green-600' : 'text-red-600'"
+                  >
+                    {{ getMovementText(user) }}
+                  </span>
+                </div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <button
@@ -152,11 +192,28 @@ onUnmounted(() => {
               </div>
               <div class="flex items-center justify-between text-sm text-gray-500">
                 <span>{{ user.valid_entries_count }} entradas</span>
+                <div class="flex items-center gap-2">
+                  <span
+                    class="w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold"
+                    :class="getMovementIcon(user).bg"
+                  >
+                    <span :class="getMovementIcon(user).class">{{ getMovementIcon(user).icon }}</span>
+                  </span>
+                  <span
+                    v-if="user.positionDiff !== 0"
+                    class="text-xs font-semibold"
+                    :class="user.movement === 'up' ? 'text-green-600' : 'text-red-600'"
+                  >
+                    {{ getMovementText(user) }}
+                  </span>
+                </div>
+              </div>
+              <div class="mt-2 text-right">
                 <button
                   @click="viewUserEntries(user.id)"
-                  class="text-green-600 font-medium"
+                  class="text-green-600 font-medium text-sm"
                 >
-                  Ver →
+                  Ver Entradas →
                 </button>
               </div>
             </div>

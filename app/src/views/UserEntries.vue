@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { getUserEntries, getEntryReports, reportEntry } from '@/services/api';
-import type { UserEntry, EntryReport } from '@/types';
+import { getUserEntries, getEntryReports, reportEntry, getUserProjectsWithProgress } from '@/services/api';
+import type { UserEntry, EntryReport, ProjectWithProgress } from '@/types';
 import { useToast } from '@/composables/useToast';
 import { createApiErrorHandler } from '@/utils/handleApiError';
+import EntryProgressModal from '@/components/EntryProgressModal.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -15,10 +16,10 @@ const { success } = useToast();
 const handleApiError = createApiErrorHandler();
 
 const entries = ref<UserEntry[]>([]);
+const projects = ref<ProjectWithProgress[]>([]);
 const loading = ref(true);
 const selectedEntry = ref<UserEntry | null>(null);
 const showEntryModal = ref(false);
-const showPhotoModal = ref(false);
 const entryReports = ref<EntryReport[]>([]);
 const hasReported = ref(false);
 
@@ -38,6 +39,15 @@ async function loadEntries() {
   }
 }
 
+async function loadProjects() {
+  try {
+    const data = await getUserProjectsWithProgress(userId.value);
+    projects.value = data.projects;
+  } catch (error) {
+    console.error('Erro ao carregar projetos:', error);
+  }
+}
+
 async function openEntryDetails(entry: UserEntry) {
   selectedEntry.value = entry;
   try {
@@ -51,7 +61,7 @@ async function openEntryDetails(entry: UserEntry) {
   showEntryModal.value = true;
 }
 
-async function handleReport() {
+async function handleReportFromModal() {
   if (!selectedEntry.value) return;
   try {
     await reportEntry(selectedEntry.value.id);
@@ -68,11 +78,6 @@ async function handleReport() {
   }
 }
 
-function openPhoto(photoUrl: string) {
-  selectedEntry.value = { photo_url: photoUrl } as UserEntry;
-  showPhotoModal.value = true;
-}
-
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('pt-BR', {
     day: '2-digit',
@@ -81,6 +86,15 @@ function formatDate(dateStr: string): string {
     hour: '2-digit',
     minute: '2-digit',
   });
+}
+
+function formatMinutes(minutes: number): string {
+  if (minutes < 60) {
+    return `${minutes} min`;
+  }
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return mins > 0 ? `${hours}h ${mins}min` : `${hours}h`;
 }
 
 function getActivityTypeIcon(categoryId?: number): string {
@@ -94,6 +108,7 @@ function getActivityTypeIcon(categoryId?: number): string {
 
 onMounted(() => {
   loadEntries();
+  loadProjects();
 });
 </script>
 
@@ -123,6 +138,51 @@ onMounted(() => {
       </div>
 
       <div v-else class="space-y-6">
+        <!-- Projetos Pessoais -->
+        <div v-if="projects.length > 0">
+          <h2 class="text-base sm:text-lg font-semibold text-gray-700 mb-4 flex items-center gap-2">
+            <span>📚</span> Projetos Pessoais - Semana {{ projects[0]?.weekNumber || '-' }}/{{ projects[0]?.year || '-' }}
+          </h2>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+            <div
+              v-for="project in projects"
+              :key="project.id"
+              class="bg-white rounded-xl shadow-sm border p-4"
+            >
+              <div class="mb-3">
+                <h3 class="font-semibold text-gray-800">{{ project.name }}</h3>
+                <p v-if="project.description" class="text-xs text-gray-500 mt-1 line-clamp-2">{{ project.description }}</p>
+              </div>
+
+              <!-- Barra de Progresso -->
+              <div class="mb-3">
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="text-gray-600">Progresso</span>
+                  <span class="font-medium" :class="project.goalReached ? 'text-green-600' : 'text-gray-700'">
+                    {{ formatMinutes(project.totalMinutes) }} / {{ formatMinutes(project.goalMinutes) }}
+                  </span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-3">
+                  <div
+                    class="h-3 rounded-full transition-all"
+                    :class="project.goalReached ? 'bg-green-600' : 'bg-blue-600'"
+                    :style="{ width: `${Math.min(100, project.percentage)}%` }"
+                  ></div>
+                </div>
+                <p class="text-xs text-gray-500 mt-1">{{ Math.round(project.percentage) }}% concluído</p>
+              </div>
+
+              <!-- Status -->
+              <div v-if="project.goalReached" class="bg-green-50 border border-green-200 rounded-lg p-2 text-center">
+                <p class="text-green-700 text-xs font-semibold">🎉 Meta batida!</p>
+              </div>
+              <div v-else class="bg-gray-50 border border-gray-200 rounded-lg p-2 text-center">
+                <p class="text-gray-600 text-xs">Falta {{ formatMinutes(project.goalMinutes - project.totalMinutes) }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Entradas Positivas -->
         <div>
           <h2 class="text-base sm:text-lg font-semibold text-green-600 mb-4 flex items-center gap-2">
@@ -242,133 +302,13 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- Modal de Detalhes da Entrada -->
-    <div v-if="showEntryModal && selectedEntry" class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
-        <div class="sticky top-0 bg-white border-b px-4 sm:px-6 py-4 flex justify-between items-center">
-          <h2 class="text-lg font-bold text-gray-800">📝 Detalhes da Entrada</h2>
-          <button @click="showEntryModal = false" class="text-gray-500 hover:text-gray-700 text-2xl">×</button>
-        </div>
-
-        <div class="p-4 sm:p-6 space-y-4">
-          <!-- Foto -->
-          <div v-if="selectedEntry.photo_url" class="relative">
-            <img
-              :src="selectedEntry.photo_url"
-              :alt="selectedEntry.description"
-              @click="openPhoto(selectedEntry.photo_url!)"
-              class="w-full h-48 sm:h-64 object-cover rounded-xl cursor-pointer hover:opacity-90 transition-opacity"
-            />
-            <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <span class="bg-black/50 text-white px-4 py-2 rounded-full text-sm font-medium backdrop-blur-sm">
-                🔍 Toque para ampliar
-              </span>
-            </div>
-          </div>
-
-          <!-- Tipo de Atividade -->
-          <div class="flex items-center gap-3">
-            <span class="text-3xl">{{ getActivityTypeIcon(selectedEntry.category_id) }}</span>
-            <div>
-              <p class="text-sm text-gray-500">Tipo de Atividade</p>
-              <p class="font-semibold text-gray-800">{{ selectedEntry.activity_type_name || 'Atividade' }}</p>
-            </div>
-          </div>
-
-          <!-- Pontos -->
-          <div class="flex items-center gap-3">
-            <div
-              class="w-10 h-10 rounded-full flex items-center justify-center"
-              :class="selectedEntry.points >= 0 ? 'bg-green-100' : 'bg-red-100'"
-            >
-              <span :class="selectedEntry.points >= 0 ? 'text-green-600' : 'text-red-600'" class="font-bold">
-                {{ selectedEntry.points >= 0 ? '+' : '' }}{{ selectedEntry.points }}
-              </span>
-            </div>
-            <div>
-              <p class="text-sm text-gray-500">Pontos</p>
-              <p class="font-semibold text-gray-800">{{ selectedEntry.points >= 0 ? 'Positivos' : 'Negativos' }}</p>
-            </div>
-          </div>
-
-          <!-- Descrição -->
-          <div>
-            <p class="text-sm text-gray-500 mb-2">Descrição</p>
-            <p class="text-gray-800">{{ selectedEntry.description }}</p>
-          </div>
-
-          <!-- Duração -->
-          <div v-if="selectedEntry.duration_minutes">
-            <p class="text-sm text-gray-500 mb-1">Duração</p>
-            <p class="font-medium text-gray-800">⏱️ {{ selectedEntry.duration_minutes }} minutos</p>
-          </div>
-
-          <!-- Data -->
-          <div>
-            <p class="text-sm text-gray-500 mb-1">Data/Hora</p>
-            <p class="font-medium text-gray-800">📅 {{ formatDate(selectedEntry.created_at) }}</p>
-          </div>
-
-          <!-- Status -->
-          <div class="flex items-center gap-2">
-            <span
-              class="px-3 py-1 rounded-full text-xs font-semibold"
-              :class="selectedEntry.is_activity_validated ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
-            >
-              {{ selectedEntry.is_activity_validated ? '✅ Validada' : '❌ Invalidada' }}
-            </span>
-          </div>
-
-          <!-- Reports -->
-          <div v-if="entryReports.length > 0" class="border-t pt-4">
-            <p class="text-sm text-gray-500 mb-2">Reports ({{ entryReports.length }})</p>
-            <div class="space-y-2">
-              <div
-                v-for="report in entryReports"
-                :key="report.id"
-                class="text-xs text-gray-600 bg-gray-50 rounded-lg p-2"
-              >
-                <span class="font-medium">🚩 {{ report.reporter_username || 'Usuário' }}</span>
-                <span class="text-gray-400">•</span>
-                <span>{{ formatDate(report.created_at) }}</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Botão Reportar -->
-          <div v-if="!hasReported && selectedEntry.is_activity_validated" class="border-t pt-4">
-            <button
-              @click="handleReport"
-              class="w-full py-3 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors"
-            >
-              🚩 Reportar como suspeita
-            </button>
-          </div>
-          <div v-else-if="hasReported" class="border-t pt-4">
-            <p class="text-center text-sm text-green-600 font-medium">
-              ✅ Você já reportou esta entrada
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Modal de Foto (Zoom) -->
-    <div v-if="showPhotoModal && selectedEntry?.photo_url" class="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50" @click="showPhotoModal = false">
-      <button
-        @click="showPhotoModal = false"
-        class="absolute top-4 right-4 text-white hover:text-gray-300 z-10"
-      >
-        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-        </svg>
-      </button>
-      <img
-        :src="selectedEntry.photo_url"
-        :alt="selectedEntry.description"
-        class="max-w-full max-h-full object-contain"
-        @click.stop
-      />
-    </div>
+    <!-- Modal de Progresso/Detalhes da Entrada -->
+    <EntryProgressModal
+      v-model="showEntryModal"
+      :entry="selectedEntry"
+      :reports="entryReports"
+      :has-reported="hasReported"
+      @report="handleReportFromModal"
+    />
   </div>
 </template>

@@ -2,6 +2,7 @@ import type {
   User,
   UserEntry,
   LeaderboardUser,
+  LeaderboardUserWithMovement,
   ActivityType,
   AuthResponse,
   ErrorResponse,
@@ -12,6 +13,8 @@ import type {
   EntryReport,
   VotingStats,
   VotingEntry,
+  TimelineEntry,
+  ProjectWithProgress,
 } from '@/types';
 
 const API_BASE = '/api';
@@ -339,6 +342,14 @@ export async function getProjectWeeklyProgress(
   return handleResponse(response);
 }
 
+// Projetos de um usuário com progresso (para visualização pública)
+export async function getUserProjectsWithProgress(userId: number): Promise<{ projects: ProjectWithProgress[] }> {
+  const response = await fetch(`${API_BASE}/projects/user/${userId}/with-progress`, {
+    credentials: 'include',
+  });
+  return handleResponse(response);
+}
+
 // Upload de Imagem
 export async function uploadImage(file: File): Promise<{
   message: string;
@@ -452,6 +463,41 @@ export async function getEntryReports(entryId: number): Promise<{
   hasReported: boolean;
 }> {
   const response = await fetch(`${API_BASE}/entries/${entryId}/reports`, {
+    credentials: 'include',
+  });
+  return handleResponse(response);
+}
+
+// Timeline
+export async function getTimeline(params?: {
+  limit?: number;
+  offset?: number;
+  days?: number;
+}): Promise<{
+  entries: TimelineEntry[];
+  pagination: {
+    limit: number;
+    offset: number;
+    total: number;
+    hasMore: boolean;
+  };
+}> {
+  const queryParams = new URLSearchParams();
+  if (params?.limit) queryParams.append('limit', params.limit.toString());
+  if (params?.offset) queryParams.append('offset', params.offset.toString());
+  if (params?.days) queryParams.append('days', params.days.toString());
+
+  const url = `${API_BASE}/timeline${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+  const response = await fetch(url, {
+    credentials: 'include',
+  });
+  return handleResponse(response);
+}
+
+export async function getLeaderboardWithMovement(): Promise<{
+  leaderboard: LeaderboardUserWithMovement[];
+}> {
+  const response = await fetch(`${API_BASE}/leaderboard?compare=true`, {
     credentials: 'include',
   });
   return handleResponse(response);

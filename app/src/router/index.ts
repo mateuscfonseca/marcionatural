@@ -37,6 +37,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/timeline',
+      name: 'Timeline',
+      component: () => import('@/views/Timeline.vue'),
+      meta: { requiresAuth: true, title: 'Timeline' },
+    },
+    {
       path: '/my-entries',
       name: 'MyEntries',
       component: () => import('@/views/MyEntries.vue'),

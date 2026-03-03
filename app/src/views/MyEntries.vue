@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
-import { getMyEntries, deleteEntry, getValidatedActivityTypes } from '@/services/api';
-import type { UserEntry, ActivityType } from '@/types';
+import { getMyEntries, deleteEntry, getValidatedActivityTypes, getEntryReports } from '@/services/api';
+import type { UserEntry, ActivityType, EntryReport } from '@/types';
 import EntryFormModal from '@/components/EntryFormModal.vue';
+import EntryProgressModal from '@/components/EntryProgressModal.vue';
 
 const entries = ref<UserEntry[]>([]);
 const activityTypes = ref<ActivityType[]>([]);
@@ -11,6 +12,10 @@ const showModal = ref(false);
 const editingEntry = ref<UserEntry | null>(null);
 const showDeleteConfirm = ref(false);
 const entryToDelete = ref<number | null>(null);
+const showProgressModal = ref(false);
+const selectedEntry = ref<UserEntry | null>(null);
+const entryReports = ref<EntryReport[]>([]);
+const hasReported = ref(false);
 
 // Paginação
 const currentPagePositive = ref(1);
@@ -117,6 +122,19 @@ function getActivityTypeName(id: number): string {
   return activityTypes.value.find(at => at.id === id)?.name || 'Desconhecido';
 }
 
+async function openEntryDetails(entry: UserEntry) {
+  selectedEntry.value = entry;
+  try {
+    const reportsData = await getEntryReports(entry.id);
+    entryReports.value = reportsData.reports;
+    hasReported.value = reportsData.hasReported;
+  } catch {
+    entryReports.value = [];
+    hasReported.value = false;
+  }
+  showProgressModal.value = true;
+}
+
 onMounted(loadEntries);
 </script>
 
@@ -178,6 +196,12 @@ onMounted(loadEntries);
                 </div>
               </div>
               <div class="flex gap-2 mt-3 pt-3 border-t">
+                <button
+                  @click="openEntryDetails(entry)"
+                  class="flex-1 text-sm text-purple-600 hover:text-purple-800 font-medium"
+                >
+                  Ver detalhes
+                </button>
                 <button
                   @click="openEditModal(entry)"
                   class="flex-1 text-sm text-blue-600 hover:text-blue-800 font-medium"
@@ -256,6 +280,12 @@ onMounted(loadEntries);
                 </div>
               </div>
               <div class="flex gap-2 mt-3 pt-3 border-t">
+                <button
+                  @click="openEntryDetails(entry)"
+                  class="flex-1 text-sm text-purple-600 hover:text-purple-800 font-medium"
+                >
+                  Ver detalhes
+                </button>
                 <button
                   @click="openEditModal(entry)"
                   class="flex-1 text-sm text-blue-600 hover:text-blue-800 font-medium"
@@ -339,6 +369,15 @@ onMounted(loadEntries);
       :activity-types="activityTypes"
       :show-activity-type-select="!editingEntry"
       @submitted="handleSubmit"
+    />
+
+    <!-- Modal de Progresso/Detalhes da Entrada -->
+    <EntryProgressModal
+      v-model="showProgressModal"
+      :entry="selectedEntry"
+      :reports="entryReports"
+      :has-reported="hasReported"
+      :show-report-button="false"
     />
 
     <!-- Modal de Confirmação de Exclusão -->
