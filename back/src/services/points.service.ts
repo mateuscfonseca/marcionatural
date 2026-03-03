@@ -129,7 +129,7 @@ export async function recalculateUserPointsAfterInvalidation(activityTypeId: num
 /**
  * Calcula pontos diários de alimentação com limite de 10 pontos por dia
  * Retorna o total de pontos de alimentação para um determinado dia (máximo 10, mínimo -10)
- * 
+ *
  * IMPORTANTE: Calcula pontos dinamicamente baseado no activity_type, não usa e.points
  */
 export async function getDailyFoodPoints(userId: number, date: string): Promise<{
@@ -137,13 +137,16 @@ export async function getDailyFoodPoints(userId: number, date: string): Promise<
   rawPoints: number;
   capped: boolean;
 }> {
-  // Usa DATE() para extrair apenas a parte da data, ignorando hora
-  // Calcula pontos somando base_points do activity_type (não e.points)
+  // Usa substr para extrair YYYY-MM-DD da data, funcionando tanto para DATE quanto DATETIME
+  // Isso evita problemas de comparação em produção onde entry_date pode ser DATE ou DATETIME
   const stmt = db.prepare(`
     SELECT COALESCE(SUM(at.base_points), 0) as total
     FROM user_entries e
     INNER JOIN activity_types at ON e.activity_type_id = at.id
-    WHERE e.user_id = ? AND DATE(e.entry_date) = DATE(?) AND at.category_id = 1 AND at.is_validated = TRUE
+    WHERE e.user_id = ? 
+      AND substr(e.entry_date, 1, 10) = substr(?, 1, 10)
+      AND at.category_id = 1 
+      AND at.is_validated = TRUE
   `);
   const result = stmt.get(userId, date) as { total: number };
   const rawPoints = result?.total ?? 0;
@@ -172,13 +175,14 @@ export async function getDailyFoodPoints(userId: number, date: string): Promise<
  * - Alimentação: máximo 10 pontos por dia (positivos ou negativos)
  * - Exercícios: 5 pontos por entrada (ilimitados por dia)
  * - Projetos pessoais: 50 pontos por semana com meta batida
- * 
+ *
  * IMPORTANTE: Calcula pontos dinamicamente baseado nos activity_types, não usa e.points
  */
 export async function getUserTotalPoints(userId: number): Promise<number> {
-  // Busca todas as datas únicas com entradas de alimentação (usando DATE() para extrair apenas a data)
+  // Busca todas as datas únicas com entradas de alimentação
+  // Usa substr para extrair YYYY-MM-DD, evitando problemas de comparação em produção
   const foodDatesStmt = db.prepare(`
-    SELECT DISTINCT DATE(e.entry_date) as entry_date
+    SELECT DISTINCT substr(e.entry_date, 1, 10) as entry_date
     FROM user_entries e
     INNER JOIN activity_types at ON e.activity_type_id = at.id
     WHERE e.user_id = ? AND e.entry_date IS NOT NULL AND at.category_id = 1 AND at.is_validated = TRUE
@@ -195,6 +199,7 @@ export async function getUserTotalPoints(userId: number): Promise<number> {
     processedDates.add(date);
 
     const dailyPoints = await getDailyFoodPoints(userId, date);
+    console.log(`[Points] User ${userId} - Date ${date}: ${dailyPoints.rawPoints} raw -> ${dailyPoints.points} capped=${dailyPoints.capped}`);
     totalFoodPoints += dailyPoints.points;
   }
 
@@ -207,7 +212,10 @@ export async function getUserTotalPoints(userId: number): Promise<number> {
     WHERE e.user_id = ? AND at.category_id = 2 AND at.is_validated = TRUE
   `);
   const exerciseResult = exerciseStmt.get(userId) as { count: number };
-  const exercisePoints = (exerciseResult?.count ?? 0) * POINTS_CONFIG.exercicio;
+  const exerciseCount = exerciseResult?.count ?? 0;
+  const exercisePoints = exerciseCount * POINTS_CONFIG.exercicio;
+  
+  console.log(`[Points] User ${userId} - Food: ${totalFoodPoints}, Exercises: ${exerciseCount} x 5 = ${exercisePoints}`);
   
   // Soma pontos de projetos pessoais (semanas completas)
   const projectsStmt = db.prepare(`
