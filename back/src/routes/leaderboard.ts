@@ -20,8 +20,6 @@ leaderboard.use('/users/:id/entries', async (c, next) => {
 // Leaderboard - ranking de usuários por pontos (público)
 leaderboard.get('/', async (c) => {
   try {
-    console.log('[Leaderboard] Calculando pontos para todos os usuários...');
-    
     // Busca apenas usuários ativos (não excluídos)
     const usersStmt = db.prepare('SELECT id, username FROM users WHERE deleted_at IS NULL');
     const users = usersStmt.all() as Array<{ id: number; username: string }>;
@@ -31,7 +29,6 @@ leaderboard.get('/', async (c) => {
       users.map(async (user) => {
         const totalPoints = await getUserTotalPoints(user.id);
         const entriesCount = await getUserEntriesCount(user.id);
-        console.log(`[Leaderboard] User ${user.username} (${user.id}): ${totalPoints} pontos, ${entriesCount} entradas`);
         return {
           id: user.id,
           username: user.username,

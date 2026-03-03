@@ -179,29 +179,6 @@ export async function getDailyFoodPoints(userId: number, date: string): Promise<
  * IMPORTANTE: Calcula pontos dinamicamente baseado nos activity_types, não usa e.points
  */
 export async function getUserTotalPoints(userId: number): Promise<number> {
-  console.log(`[Points] === INICIANDO CÁLCULO PARA USUÁRIO ${userId} ===`);
-  
-  // Busca todas as entradas de alimentação para debug
-  const allFoodEntriesStmt = db.prepare(`
-    SELECT e.id, e.entry_date, e.activity_type_id, at.name, at.base_points, at.is_validated
-    FROM user_entries e
-    INNER JOIN activity_types at ON e.activity_type_id = at.id
-    WHERE e.user_id = ? AND at.category_id = 1
-    ORDER BY e.entry_date
-  `);
-  const allFoodEntries = allFoodEntriesStmt.all(userId) as Array<{
-    id: number;
-    entry_date: string;
-    activity_type_id: number;
-    name: string;
-    base_points: number;
-    is_validated: number;
-  }>;
-  console.log(`[Points] User ${userId} - Todas as entradas de alimentação no banco: ${allFoodEntries.length}`);
-  allFoodEntries.forEach(e => {
-    console.log(`  - Entry ${e.id}: date=${e.entry_date}, type=${e.name}, base_points=${e.base_points}, validated=${e.is_validated}`);
-  });
-  
   // Busca todas as datas únicas com entradas de alimentação
   // Usa substr para extrair YYYY-MM-DD, evitando problemas de comparação em produção
   const foodDatesStmt = db.prepare(`
@@ -211,8 +188,6 @@ export async function getUserTotalPoints(userId: number): Promise<number> {
     WHERE e.user_id = ? AND e.entry_date IS NOT NULL AND at.category_id = 1 AND at.is_validated = TRUE
   `);
   const foodDates = foodDatesStmt.all(userId) as Array<{ entry_date: string }>;
-  console.log(`[Points] User ${userId} - Datas únicas de alimentação validada encontradas: ${foodDates.length}`);
-  foodDates.forEach(d => console.log(`  - Data: ${d.entry_date}`));
 
   let totalFoodPoints = 0;
   const processedDates = new Set<string>();
@@ -224,7 +199,6 @@ export async function getUserTotalPoints(userId: number): Promise<number> {
     processedDates.add(date);
 
     const dailyPoints = await getDailyFoodPoints(userId, date);
-    console.log(`[Points] User ${userId} - Date ${date}: ${dailyPoints.rawPoints} raw -> ${dailyPoints.points} capped=${dailyPoints.capped}`);
     totalFoodPoints += dailyPoints.points;
   }
 
@@ -239,9 +213,6 @@ export async function getUserTotalPoints(userId: number): Promise<number> {
   const exerciseResult = exerciseStmt.get(userId) as { count: number };
   const exerciseCount = exerciseResult?.count ?? 0;
   const exercisePoints = exerciseCount * POINTS_CONFIG.exercicio;
-  
-  console.log(`[Points] User ${userId} - Food: ${totalFoodPoints}, Exercises: ${exerciseCount} x 5 = ${exercisePoints}`);
-  console.log(`[Points] === FIM CÁLCULO PARA USUÁRIO ${userId} ===\n`);
   
   // Soma pontos de projetos pessoais (semanas completas)
   const projectsStmt = db.prepare(`
