@@ -4,10 +4,10 @@ export interface TimelineEntry {
   id: number;
   user_id: number;
   username: string;
-  activity_type_id: number;
-  activity_type_name: string;
-  category_id: number;
-  category_name: string;
+  activity_type_id: number | null;
+  activity_type_name: string | null;
+  category_id: number | null;
+  category_name: string | null;
   description: string;
   photo_url: string | null;
   photo_identifier: string | null;
@@ -16,6 +16,13 @@ export interface TimelineEntry {
   entry_date: string;
   created_at: string;
   is_invalidated: boolean;
+  // Campos para projetos pessoais
+  entry_type: 'activity' | 'project';
+  project_id: number | null;
+  project_name: string | null;
+  duration_minutes: number | null;
+  week_number: number | null;
+  year: number | null;
 }
 
 /**
@@ -28,8 +35,8 @@ function toUTCDate(dateStr: string | null): string | null {
 
 /**
  * Busca entradas para a timeline (feed de atividades)
- * Retorna apenas entradas validadas, ordenadas por data (mais recente primeiro)
- * 
+ * Retorna entradas de atividades e logs de projetos, ordenadas por data (mais recente primeiro)
+ *
  * @param limit - Quantidade máxima de entradas (padrão: 50)
  * @param offset - Offset para paginação (padrão: 0)
  * @param days - Filtrar por últimos X dias (opcional)
@@ -43,9 +50,10 @@ export async function getTimelineEntries(
   const params: (number | string)[] = [];
 
   if (days) {
-    dateFilter = `AND e.entry_date >= date('now', '-${days} days')`;
+    dateFilter = `AND entry_date >= date('now', '-${days} days')`;
   }
 
+  // UNION de atividades e logs de projetos
   const stmt = db.prepare(`
     SELECT
       e.id,
@@ -62,7 +70,13 @@ export async function getTimelineEntries(
       e.points,
       e.entry_date,
       e.created_at,
-      e.is_invalidated
+      e.is_invalidated,
+      'activity' as entry_type,
+      NULL as project_id,
+      NULL as project_name,
+      e.duration_minutes,
+      NULL as week_number,
+      NULL as year
     FROM user_entries e
     INNER JOIN users u ON e.user_id = u.id
     INNER JOIN activity_types at ON e.activity_type_id = at.id
@@ -70,7 +84,38 @@ export async function getTimelineEntries(
     WHERE e.is_invalidated = FALSE
       AND u.deleted_at IS NULL
       ${dateFilter}
-    ORDER BY e.entry_date DESC, e.created_at DESC
+
+    UNION ALL
+
+    SELECT
+      l.id,
+      l.user_id,
+      u.username,
+      NULL as activity_type_id,
+      NULL as activity_type_name,
+      NULL as category_id,
+      NULL as category_name,
+      'Registro de tempo no projeto' as description,
+      NULL as photo_url,
+      NULL as photo_identifier,
+      NULL as photo_original_name,
+      0 as points,
+      l.date as entry_date,
+      l.created_at,
+      FALSE as is_invalidated,
+      'project' as entry_type,
+      l.project_id,
+      p.name as project_name,
+      l.duration_minutes,
+      l.week_number,
+      l.year
+    FROM project_daily_logs l
+    INNER JOIN users u ON l.user_id = u.id
+    INNER JOIN personal_projects p ON l.project_id = p.id
+    WHERE u.deleted_at IS NULL
+      ${dateFilter}
+
+    ORDER BY entry_date DESC, created_at DESC
     LIMIT ? OFFSET ?
   `);
 
@@ -84,22 +129,33 @@ export async function getTimelineEntries(
 }
 
 /**
- * Conta total de entradas disponíveis na timeline
+ * Conta total de entradas disponíveis na timeline (atividades + projetos)
  */
 export async function getTimelineEntriesCount(days?: number): Promise<number> {
   let dateFilter = '';
 
   if (days) {
-    dateFilter = `AND e.entry_date >= date('now', '-${days} days')`;
+    dateFilter = `AND entry_date >= date('now', '-${days} days')`;
   }
 
   const stmt = db.prepare(`
     SELECT COUNT(*) as count
-    FROM user_entries e
-    INNER JOIN users u ON e.user_id = u.id
-    WHERE e.is_invalidated = FALSE
-      AND u.deleted_at IS NULL
-      ${dateFilter}
+    FROM (
+      SELECT e.entry_date
+      FROM user_entries e
+      INNER JOIN users u ON e.user_id = u.id
+      WHERE e.is_invalidated = FALSE
+        AND u.deleted_at IS NULL
+        ${dateFilter}
+
+      UNION ALL
+
+      SELECT l.date as entry_date
+      FROM project_daily_logs l
+      INNER JOIN users u ON l.user_id = u.id
+      WHERE u.deleted_at IS NULL
+        ${dateFilter}
+    )
   `);
 
   const result = stmt.get() as { count: number };
