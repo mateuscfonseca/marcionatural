@@ -3,11 +3,16 @@ import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { getUserEntries, getEntryReports, reportEntry } from '@/services/api';
 import type { UserEntry, EntryReport } from '@/types';
+import { useToast } from '@/composables/useToast';
+import { createApiErrorHandler } from '@/utils/handleApiError';
 
 const route = useRoute();
 const router = useRouter();
 const userId = computed(() => parseInt(route.params.userId as string));
 const username = ref('');
+
+const { success } = useToast();
+const handleApiError = createApiErrorHandler();
 
 const entries = ref<UserEntry[]>([]);
 const loading = ref(true);
@@ -50,6 +55,7 @@ async function handleReport() {
   if (!selectedEntry.value) return;
   try {
     await reportEntry(selectedEntry.value.id);
+    success('Report registrado com sucesso!');
     hasReported.value = true;
     entryReports.value.push({
       id: Date.now(),
@@ -58,8 +64,7 @@ async function handleReport() {
       created_at: new Date().toISOString(),
     });
   } catch (error) {
-    console.error('Erro ao reportar:', error);
-    alert('Erro ao reportar entrada');
+    handleApiError(error, 'Erro ao reportar entrada');
   }
 }
 

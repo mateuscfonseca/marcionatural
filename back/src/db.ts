@@ -26,6 +26,7 @@ db.exec('PRAGMA journal_mode = WAL');
 
 export function initDatabase() {
   // Lê e executa o schema
+  if(isProduction) {return;}
   const schemaPath = join(__dirname, 'schema.sql');
   const schema = fs.readFileSync(schemaPath, 'utf-8');
   db.exec(schema);
