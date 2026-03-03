@@ -2,6 +2,8 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { getAllUsers, deleteUser, restoreUser } from '@/services/api';
+import { useToast } from '@/composables/useToast';
+import { createApiErrorHandler } from '@/utils/handleApiError';
 
 interface UserWithPoints {
   id: number;
@@ -14,6 +16,9 @@ interface UserWithPoints {
 const router = useRouter();
 const users = ref<UserWithPoints[]>([]);
 const loading = ref(true);
+
+const { success } = useToast();
+const handleApiError = createApiErrorHandler();
 
 // Modal de confirmação
 const showModal = ref(false);
@@ -73,16 +78,17 @@ async function confirmAction() {
   try {
     if (modalAction.value === 'delete') {
       await deleteUser(selectedUser.value.id);
+      success('Usuário desativado com sucesso!');
       selectedUser.value.deleted_at = new Date().toISOString();
     } else {
       await restoreUser(selectedUser.value.id);
+      success('Usuário reativado com sucesso!');
       selectedUser.value.deleted_at = null;
     }
     closeModal();
     loadUsers();
   } catch (error) {
-    console.error('Erro na operação:', error);
-    alert('Erro ao processar solicitação');
+    handleApiError(error, 'Erro ao processar solicitação');
   } finally {
     processing.value = false;
   }

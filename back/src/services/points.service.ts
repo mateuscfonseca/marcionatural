@@ -135,11 +135,12 @@ export async function getDailyFoodPoints(userId: number, date: string): Promise<
   rawPoints: number;
   capped: boolean;
 }> {
+  // Usa DATE() para extrair apenas a parte da data, ignorando hora
   const stmt = db.prepare(`
     SELECT COALESCE(SUM(e.points), 0) as total
     FROM user_entries e
     INNER JOIN activity_types at ON e.activity_type_id = at.id
-    WHERE e.user_id = ? AND e.entry_date = ? AND at.category_id = 1 AND at.is_validated = TRUE
+    WHERE e.user_id = ? AND DATE(e.entry_date) = DATE(?) AND at.category_id = 1 AND at.is_validated = TRUE
   `);
   const result = stmt.get(userId, date) as { total: number };
   const rawPoints = result?.total ?? 0;
@@ -170,9 +171,9 @@ export async function getDailyFoodPoints(userId: number, date: string): Promise<
  * - Projetos pessoais: 50 pontos por semana com meta batida
  */
 export async function getUserTotalPoints(userId: number): Promise<number> {
-  // Busca todas as datas únicas com entradas de alimentação
+  // Busca todas as datas únicas com entradas de alimentação (usando DATE() para extrair apenas a data)
   const foodDatesStmt = db.prepare(`
-    SELECT DISTINCT e.entry_date
+    SELECT DISTINCT DATE(e.entry_date) as entry_date
     FROM user_entries e
     INNER JOIN activity_types at ON e.activity_type_id = at.id
     WHERE e.user_id = ? AND e.entry_date IS NOT NULL AND at.category_id = 1 AND at.is_validated = TRUE
