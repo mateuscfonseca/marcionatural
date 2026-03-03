@@ -66,6 +66,19 @@ export async function getCurrentUser(): Promise<{ user: User } | null> {
   }
 }
 
+export async function resetPassword(userId: number, newPassword: string): Promise<{
+  message: string;
+  user: { id: number; username: string };
+}> {
+  const response = await fetch(`${API_BASE}/auth/reset-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ userId, newPassword }),
+  });
+  return handleResponse(response);
+}
+
 // Leaderboard
 export async function getLeaderboard(): Promise<{ leaderboard: LeaderboardUser[] }> {
   const response = await fetch(`${API_BASE}/leaderboard`, {

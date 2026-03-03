@@ -45,3 +45,15 @@ export async function createUser(username: string, passwordHash: string): Promis
     created_at: new Date().toISOString(),
   };
 }
+
+export async function getAllUsers(): Promise<Array<{ id: number; username: string }>> {
+  const stmt = db.prepare('SELECT id, username FROM users ORDER BY username ASC');
+  const users = stmt.all() as Array<{ id: number; username: string }>;
+  return users;
+}
+
+export async function updateUserPassword(userId: number, newPasswordHash: string): Promise<boolean> {
+  const stmt = db.prepare('UPDATE users SET password_hash = ? WHERE id = ?');
+  const result = stmt.run(newPasswordHash, userId);
+  return result.changes > 0;
+}

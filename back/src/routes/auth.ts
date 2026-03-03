@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import bcrypt from 'bcryptjs';
 import { generateToken, verifyToken } from '../utils/jwt';
-import { findUserByUsername, createUser, findUserById } from '../services/user.service';
+import { findUserByUsername, createUser, findUserById, getAllUsers, updateUserPassword } from '../services/user.service';
 
 const auth = new Hono();
 
@@ -161,6 +161,59 @@ auth.get('/me', async (c) => {
     });
   } catch (error) {
     console.error('Erro ao obter usuário:', error);
+    return c.json({ error: 'Erro interno do servidor' }, 500);
+  }
+});
+
+// Listar todos os usuários (para reset de senha)
+auth.get('/users', async (c) => {
+  try {
+    const users = await getAllUsers();
+    return c.json({ users });
+  } catch (error) {
+    console.error('Erro ao listar usuários:', error);
+    return c.json({ error: 'Erro interno do servidor' }, 500);
+  }
+});
+
+// Reset de senha (sem verificação - para grupo de amigos)
+auth.post('/reset-password', async (c) => {
+  try {
+    const body = await c.req.json();
+    const { userId, newPassword } = body;
+
+    if (!userId || !newPassword) {
+      return c.json({ error: 'Usuário e nova senha são obrigatórios' }, 400);
+    }
+
+    if (newPassword.length < 6) {
+      return c.json({ error: 'Senha deve ter pelo menos 6 caracteres' }, 400);
+    }
+
+    // Verifica se usuário existe
+    const user = await findUserById(userId);
+    if (!user) {
+      return c.json({ error: 'Usuário não encontrado' }, 404);
+    }
+
+    // Hash da nova senha
+    const newPasswordHash = await bcrypt.hash(newPassword, 10);
+
+    // Atualiza senha
+    const updated = await updateUserPassword(userId, newPasswordHash);
+    if (!updated) {
+      return c.json({ error: 'Erro ao atualizar senha' }, 500);
+    }
+
+    return c.json({
+      message: 'Senha redefinida com sucesso',
+      user: {
+        id: user.id,
+        username: user.username,
+      },
+    });
+  } catch (error) {
+    console.error('Erro no reset de senha:', error);
     return c.json({ error: 'Erro interno do servidor' }, 500);
   }
 });

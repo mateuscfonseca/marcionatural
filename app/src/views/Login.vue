@@ -79,6 +79,12 @@ async function handleSubmit() {
           {{ error }}
         </div>
 
+        <div class="text-right">
+          <router-link to="/reset-password" class="text-sm text-green-600 hover:text-green-700 font-medium underline underline-offset-2">
+            Esqueceu a senha?
+          </router-link>
+        </div>
+
         <button
           type="submit"
           :disabled="loading"
