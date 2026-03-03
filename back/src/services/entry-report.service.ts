@@ -1,4 +1,4 @@
-import { db } from '../db';
+import { getDb } from '../db-provider';
 
 export interface EntryReport {
   id: number;
@@ -43,7 +43,7 @@ export async function createEntryReport(
   entryId: number,
   reporterUserId: number
 ): Promise<EntryReport> {
-  const stmt = db.prepare(`
+  const stmt = getDb().prepare(`
     INSERT INTO entry_reports (entry_id, reporter_user_id)
     VALUES (?, ?)
   `);
@@ -65,7 +65,7 @@ export async function removeEntryReport(
   entryId: number,
   reporterUserId: number
 ): Promise<boolean> {
-  const stmt = db.prepare(`
+  const stmt = getDb().prepare(`
     DELETE FROM entry_reports
     WHERE entry_id = ? AND reporter_user_id = ?
   `);
@@ -81,7 +81,7 @@ export async function hasUserReported(
   userId: number,
   entryId: number
 ): Promise<boolean> {
-  const stmt = db.prepare(`
+  const stmt = getDb().prepare(`
     SELECT 1 FROM entry_reports
     WHERE entry_id = ? AND reporter_user_id = ?
   `);
@@ -95,7 +95,7 @@ export async function hasUserReported(
 export async function getReportsByEntry(
   entryId: number
 ): Promise<EntryReport[]> {
-  const stmt = db.prepare(`
+  const stmt = getDb().prepare(`
     SELECT * FROM entry_reports
     WHERE entry_id = ?
     ORDER BY created_at DESC
@@ -110,7 +110,7 @@ export async function getReportsByEntry(
 export async function getReportsByEntryWithDetails(
   entryId: number
 ): Promise<EntryReportWithDetails[]> {
-  const stmt = db.prepare(`
+  const stmt = getDb().prepare(`
     SELECT
       er.*,
       e.description as entry_description,
@@ -132,7 +132,7 @@ export async function getReportsByEntryWithDetails(
  * Conta quantos reports uma entrada tem
  */
 export async function getReportCount(entryId: number): Promise<number> {
-  const stmt = db.prepare(`
+  const stmt = getDb().prepare(`
     SELECT COUNT(*) as count FROM entry_reports
     WHERE entry_id = ?
   `);
@@ -144,7 +144,7 @@ export async function getReportCount(entryId: number): Promise<number> {
  * Invalida uma entrada automaticamente (≥3 reports)
  */
 export async function invalidateEntry(entryId: number): Promise<boolean> {
-  const stmt = db.prepare(`
+  const stmt = getDb().prepare(`
     UPDATE user_entries
     SET is_invalidated = TRUE, invalidated_at = CURRENT_TIMESTAMP
     WHERE id = ?
@@ -162,7 +162,7 @@ export async function checkAndUpdateInvalidation(
   const reportCount = await getReportCount(entryId);
 
   // Verifica status atual
-  const currentStatusStmt = db.prepare(`
+  const currentStatusStmt = getDb().prepare(`
     SELECT is_invalidated FROM user_entries WHERE id = ?
   `);
   const currentStatus = currentStatusStmt.get(entryId) as {
@@ -192,7 +192,7 @@ export async function getReportsStatsForEntries(
   }
 
   const placeholders = entryIds.map(() => '?').join(',');
-  const stmt = db.prepare(`
+  const stmt = getDb().prepare(`
     SELECT
       e.id as entryId,
       COUNT(er.id) as reportCount,
@@ -239,7 +239,7 @@ export async function getEntriesAvailableToReport(
   report_count: number;
   is_invalidated: boolean;
 }>> {
-  const stmt = db.prepare(`
+  const stmt = getDb().prepare(`
     SELECT
       e.id,
       e.user_id,
@@ -293,7 +293,7 @@ export async function getInvalidatedEntries(): Promise<Array<{
   invalidated_at: string | null;
   report_count: number;
 }>> {
-  const stmt = db.prepare(`
+  const stmt = getDb().prepare(`
     SELECT
       e.id,
       e.user_id,
@@ -344,7 +344,7 @@ export async function getUserInvalidatedEntries(
   invalidated_at: string | null;
   report_count: number;
 }>> {
-  const stmt = db.prepare(`
+  const stmt = getDb().prepare(`
     SELECT
       e.id,
       e.description,
@@ -391,7 +391,7 @@ export async function getMyEntriesWithReports(
   report_count: number;
   report_created_at: string | null;
 }>> {
-  const stmt = db.prepare(`
+  const stmt = getDb().prepare(`
     SELECT
       e.id,
       e.description,
@@ -437,7 +437,7 @@ export async function getVotingStats(userId: number): Promise<{
   totalInvalidatedEntries: number;
   myTotalReports: number;
 }> {
-  const availableStmt = db.prepare(`
+  const availableStmt = getDb().prepare(`
     SELECT COUNT(*) as count
     FROM user_entries e
     WHERE e.user_id != ?
@@ -447,19 +447,19 @@ export async function getVotingStats(userId: number): Promise<{
   `);
   const availableResult = availableStmt.get(userId, userId) as { count: number };
 
-  const myInvalidatedStmt = db.prepare(`
+  const myInvalidatedStmt = getDb().prepare(`
     SELECT COUNT(*) as count FROM user_entries
     WHERE user_id = ? AND is_invalidated = TRUE
   `);
   const myInvalidatedResult = myInvalidatedStmt.get(userId) as { count: number };
 
-  const totalInvalidatedStmt = db.prepare(`
+  const totalInvalidatedStmt = getDb().prepare(`
     SELECT COUNT(*) as count FROM user_entries
     WHERE is_invalidated = TRUE
   `);
   const totalInvalidatedResult = totalInvalidatedStmt.get() as { count: number };
 
-  const myReportsStmt = db.prepare(`
+  const myReportsStmt = getDb().prepare(`
     SELECT COUNT(*) as count FROM entry_reports
     WHERE reporter_user_id = ?
   `);
@@ -490,7 +490,7 @@ export async function getMyReports(
   owner_username: string;
   report_count: number;
 }>> {
-  const stmt = db.prepare(`
+  const stmt = getDb().prepare(`
     SELECT
       er.id,
       er.entry_id,

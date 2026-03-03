@@ -1,4 +1,4 @@
-import { db } from '../db';
+import { getDb } from '../db-provider';
 
 export interface PersonalProject {
   id: number;
@@ -69,7 +69,7 @@ function normalizeLogs(logs: ProjectDailyLog[]): ProjectDailyLog[] {
 }
 
 export async function getProjectsByUser(userId: number): Promise<PersonalProject[]> {
-  const stmt = db.prepare(`
+  const stmt = getDb().prepare(`
     SELECT * FROM personal_projects
     WHERE user_id = ?
     ORDER BY created_at DESC
@@ -79,7 +79,7 @@ export async function getProjectsByUser(userId: number): Promise<PersonalProject
 }
 
 export async function getProjectById(id: number, userId: number): Promise<PersonalProject | undefined> {
-  const stmt = db.prepare('SELECT * FROM personal_projects WHERE id = ? AND user_id = ?');
+  const stmt = getDb().prepare('SELECT * FROM personal_projects WHERE id = ? AND user_id = ?');
   const project = stmt.get(id, userId) as PersonalProject | undefined;
   if (!project) return undefined;
   return {
@@ -94,7 +94,7 @@ export async function createProject(
   description: string,
   weeklyHoursGoal: number
 ): Promise<PersonalProject> {
-  const stmt = db.prepare(`
+  const stmt = getDb().prepare(`
     INSERT INTO personal_projects (user_id, name, description, weekly_hours_goal)
     VALUES (?, ?, ?, ?)
   `);
@@ -144,7 +144,7 @@ export async function updateProject(
   }
 
   values.push(id, userId);
-  const stmt = db.prepare(`
+  const stmt = getDb().prepare(`
     UPDATE personal_projects
     SET ${updates.join(', ')}
     WHERE id = ? AND user_id = ?
@@ -155,7 +155,7 @@ export async function updateProject(
 }
 
 export async function deleteProject(id: number, userId: number): Promise<boolean> {
-  const stmt = db.prepare('DELETE FROM personal_projects WHERE id = ? AND user_id = ?');
+  const stmt = getDb().prepare('DELETE FROM personal_projects WHERE id = ? AND user_id = ?');
   const result = stmt.run(id, userId);
   return result.changes > 0;
 }
@@ -190,7 +190,7 @@ export async function logProjectTime(
   const { week, year } = getWeekNumber(logDate);
 
   // Verifica se já existe registro para este dia
-  const existingStmt = db.prepare(`
+  const existingStmt = getDb().prepare(`
     SELECT * FROM project_daily_logs
     WHERE project_id = ? AND user_id = ? AND date = ?
   `);
@@ -198,7 +198,7 @@ export async function logProjectTime(
 
   if (existing) {
     // Atualiza registro existente (soma minutos)
-    const updateStmt = db.prepare(`
+    const updateStmt = getDb().prepare(`
       UPDATE project_daily_logs
       SET duration_minutes = duration_minutes + ?, week_number = ?, year = ?
       WHERE id = ?
@@ -213,7 +213,7 @@ export async function logProjectTime(
   }
 
   // Cria novo registro
-  const stmt = db.prepare(`
+  const stmt = getDb().prepare(`
     INSERT INTO project_daily_logs (project_id, user_id, date, duration_minutes, week_number, year)
     VALUES (?, ?, ?, ?, ?, ?)
   `);
@@ -241,7 +241,7 @@ export async function getWeeklyProgress(
   year: number
 ): Promise<WeeklyProgress> {
   // Busca meta do projeto
-  const projectStmt = db.prepare('SELECT weekly_hours_goal FROM personal_projects WHERE id = ? AND user_id = ?');
+  const projectStmt = getDb().prepare('SELECT weekly_hours_goal FROM personal_projects WHERE id = ? AND user_id = ?');
   const project = projectStmt.get(projectId, userId) as { weekly_hours_goal: number } | undefined;
 
   if (!project) {
@@ -251,7 +251,7 @@ export async function getWeeklyProgress(
   const goalMinutes = project.weekly_hours_goal * 60;
 
   // Busca logs da semana
-  const logsStmt = db.prepare(`
+  const logsStmt = getDb().prepare(`
     SELECT * FROM project_daily_logs
     WHERE project_id = ? AND user_id = ? AND week_number = ? AND year = ?
     ORDER BY date DESC
@@ -291,7 +291,7 @@ export async function getProjectTotalPoints(userId: number, projectId: number): 
   const { calculateProjectWeeklyPoints } = await import('./points.service');
 
   // Busca todas as semanas únicas com logs
-  const stmt = db.prepare(`
+  const stmt = getDb().prepare(`
     SELECT DISTINCT week_number, year
     FROM project_daily_logs
     WHERE project_id = ? AND user_id = ?
@@ -320,7 +320,7 @@ export async function getUserProjectsWithProgress(userId: number): Promise<Proje
   const { week, year } = getWeekNumber(new Date());
 
   // Busca projetos ativos do usuário
-  const projectsStmt = db.prepare(`
+  const projectsStmt = getDb().prepare(`
     SELECT * FROM personal_projects
     WHERE user_id = ? AND is_active = 1
     ORDER BY created_at DESC
@@ -331,7 +331,7 @@ export async function getUserProjectsWithProgress(userId: number): Promise<Proje
 
   for (const project of projects) {
     // Busca logs da semana atual para este projeto
-    const logsStmt = db.prepare(`
+    const logsStmt = getDb().prepare(`
       SELECT SUM(duration_minutes) as totalMinutes
       FROM project_daily_logs
       WHERE project_id = ? AND user_id = ? AND week_number = ? AND year = ?

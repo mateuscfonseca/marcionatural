@@ -1,4 +1,4 @@
-import { db } from '../db';
+import { getDb } from '../db-provider';
 
 export interface LeaderboardUser {
   id: number;
@@ -32,7 +32,7 @@ async function getUserTotalPointsUntilDate(
   untilDate: string
 ): Promise<number> {
   // Busca todas as datas únicas com entradas de alimentação até a data
-  const foodDatesStmt = db.prepare(`
+  const foodDatesStmt = getDb().prepare(`
     SELECT DISTINCT substr(e.entry_date, 1, 10) as entry_date
     FROM user_entries e
     INNER JOIN activity_types at ON e.activity_type_id = at.id
@@ -53,7 +53,7 @@ async function getUserTotalPointsUntilDate(
     if (!date || processedDates.has(date)) continue;
     processedDates.add(date);
 
-    const stmt = db.prepare(`
+    const stmt = getDb().prepare(`
       SELECT COALESCE(SUM(at.base_points), 0) as total
       FROM user_entries e
       INNER JOIN activity_types at ON e.activity_type_id = at.id
@@ -74,7 +74,7 @@ async function getUserTotalPointsUntilDate(
   }
 
   // Soma pontos de exercícios até a data (5 pontos por entrada)
-  const exerciseStmt = db.prepare(`
+  const exerciseStmt = getDb().prepare(`
     SELECT COUNT(*) as count
     FROM user_entries e
     INNER JOIN activity_types at ON e.activity_type_id = at.id
@@ -97,7 +97,7 @@ async function getUserEntriesCountUntilDate(
   userId: number,
   untilDate: string
 ): Promise<number> {
-  const stmt = db.prepare(`
+  const stmt = getDb().prepare(`
     SELECT COUNT(*) as count
     FROM user_entries e
     INNER JOIN activity_types at ON e.activity_type_id = at.id
@@ -114,7 +114,7 @@ async function getUserEntriesCountUntilDate(
  */
 export async function getLeaderboardByDate(date: string): Promise<LeaderboardUser[]> {
   // Busca apenas usuários ativos
-  const usersStmt = db.prepare(
+  const usersStmt = getDb().prepare(
     'SELECT id, username FROM users WHERE deleted_at IS NULL'
   );
   const users = usersStmt.all() as Array<{ id: number; username: string }>;

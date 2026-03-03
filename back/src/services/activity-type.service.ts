@@ -1,4 +1,4 @@
-import { db } from '../db';
+import { getDb } from '../db-provider';
 
 export interface ActivityType {
   id: number;
@@ -35,7 +35,7 @@ function normalizeActivityTypes(types: ActivityType[]): ActivityType[] {
 }
 
 export async function getAllActivityTypes(): Promise<ActivityType[]> {
-  const stmt = db.prepare(`
+  const stmt = getDb().prepare(`
     SELECT
       at.*,
       c.name as category_name,
@@ -53,7 +53,7 @@ export async function getAllActivityTypes(): Promise<ActivityType[]> {
 }
 
 export async function getActivityTypesByCategory(categoryId: number): Promise<ActivityType[]> {
-  const stmt = db.prepare(`
+  const stmt = getDb().prepare(`
     SELECT
       at.*,
       c.name as category_name,
@@ -72,7 +72,7 @@ export async function getActivityTypesByCategory(categoryId: number): Promise<Ac
 }
 
 export async function getActivityTypeById(id: number): Promise<ActivityType | undefined> {
-  const stmt = db.prepare(`
+  const stmt = getDb().prepare(`
     SELECT
       at.*,
       c.name as category_name
@@ -105,7 +105,7 @@ export async function createActivityType(
     basePoints = 5;
   }
 
-  const stmt = db.prepare(`
+  const stmt = getDb().prepare(`
     INSERT INTO activity_types (name, category_id, is_positive, base_points, created_by_user_id)
     VALUES (?, ?, ?, ?, ?)
   `);
@@ -124,12 +124,12 @@ export async function createActivityType(
 }
 
 export async function findActivityTypeByName(name: string, categoryId: number): Promise<ActivityType | undefined> {
-  const stmt = db.prepare('SELECT * FROM activity_types WHERE name = ? AND category_id = ?');
+  const stmt = getDb().prepare('SELECT * FROM activity_types WHERE name = ? AND category_id = ?');
   return stmt.get(name, categoryId) as ActivityType | undefined;
 }
 
 export async function getValidatedActivityTypes(): Promise<ActivityType[]> {
-  const stmt = db.prepare(`
+  const stmt = getDb().prepare(`
     SELECT
       at.*,
       c.name as category_name
@@ -144,7 +144,7 @@ export async function getValidatedActivityTypes(): Promise<ActivityType[]> {
 
 export async function getActivityTypesForUser(userId: number): Promise<ActivityType[]> {
   // Retorna activity_types validados + os criados pelo usuário
-  const stmt = db.prepare(`
+  const stmt = getDb().prepare(`
     SELECT
       at.*,
       c.name as category_name

@@ -1,4 +1,4 @@
-import { db } from '../db';
+import { getDb } from '../db-provider';
 
 export interface User {
   id: number;
@@ -17,7 +17,7 @@ function toUTCDate(dateStr: string | null): string | null {
 }
 
 export async function findUserByUsername(username: string): Promise<User | undefined> {
-  const stmt = db.prepare('SELECT * FROM users WHERE username = ?');
+  const stmt = getDb().prepare('SELECT * FROM users WHERE username = ?');
   const user = stmt.get(username) as User | undefined;
   if (!user) return undefined;
   return {
@@ -28,7 +28,7 @@ export async function findUserByUsername(username: string): Promise<User | undef
 }
 
 export async function findUserById(id: number): Promise<User | undefined> {
-  const stmt = db.prepare('SELECT * FROM users WHERE id = ?');
+  const stmt = getDb().prepare('SELECT * FROM users WHERE id = ?');
   const user = stmt.get(id) as User | undefined;
   if (!user) return undefined;
   return {
@@ -42,7 +42,7 @@ export async function findUserById(id: number): Promise<User | undefined> {
  * Busca usuário incluindo excluídos (para reativação)
  */
 export async function findDeletedUserById(id: number): Promise<User | undefined> {
-  const stmt = db.prepare('SELECT * FROM users WHERE id = ?');
+  const stmt = getDb().prepare('SELECT * FROM users WHERE id = ?');
   const user = stmt.get(id) as User | undefined;
   if (!user) return undefined;
   return {
@@ -53,7 +53,7 @@ export async function findDeletedUserById(id: number): Promise<User | undefined>
 }
 
 export async function createUser(username: string, passwordHash: string): Promise<User> {
-  const stmt = db.prepare('INSERT INTO users (username, password_hash) VALUES (?, ?)');
+  const stmt = getDb().prepare('INSERT INTO users (username, password_hash) VALUES (?, ?)');
   const result = stmt.run(username, passwordHash);
   return {
     id: result.lastInsertRowid as number,
@@ -65,7 +65,7 @@ export async function createUser(username: string, passwordHash: string): Promis
 }
 
 export async function getAllUsers(): Promise<Array<{ id: number; username: string }>> {
-  const stmt = db.prepare('SELECT id, username FROM users WHERE deleted_at IS NULL ORDER BY username ASC');
+  const stmt = getDb().prepare('SELECT id, username FROM users WHERE deleted_at IS NULL ORDER BY username ASC');
   const users = stmt.all() as Array<{ id: number; username: string }>;
   return users;
 }
@@ -76,13 +76,13 @@ export async function getAllUsers(): Promise<Array<{ id: number; username: strin
 export async function getAllUsersWithDeleted(): Promise<
   Array<{ id: number; username: string; deleted_at: string | null }>
 > {
-  const stmt = db.prepare('SELECT id, username, deleted_at FROM users ORDER BY username ASC');
+  const stmt = getDb().prepare('SELECT id, username, deleted_at FROM users ORDER BY username ASC');
   const users = stmt.all() as Array<{ id: number; username: string; deleted_at: string | null }>;
   return users;
 }
 
 export async function updateUserPassword(userId: number, newPasswordHash: string): Promise<boolean> {
-  const stmt = db.prepare('UPDATE users SET password_hash = ? WHERE id = ?');
+  const stmt = getDb().prepare('UPDATE users SET password_hash = ? WHERE id = ?');
   const result = stmt.run(newPasswordHash, userId);
   return result.changes > 0;
 }
@@ -91,7 +91,7 @@ export async function updateUserPassword(userId: number, newPasswordHash: string
  * Exclusão lógica de usuário
  */
 export async function softDeleteUser(userId: number): Promise<boolean> {
-  const stmt = db.prepare('UPDATE users SET deleted_at = CURRENT_TIMESTAMP WHERE id = ? AND deleted_at IS NULL');
+  const stmt = getDb().prepare('UPDATE users SET deleted_at = CURRENT_TIMESTAMP WHERE id = ? AND deleted_at IS NULL');
   const result = stmt.run(userId);
   return result.changes > 0;
 }
@@ -100,7 +100,7 @@ export async function softDeleteUser(userId: number): Promise<boolean> {
  * Reativar usuário excluído
  */
 export async function restoreUser(userId: number): Promise<boolean> {
-  const stmt = db.prepare('UPDATE users SET deleted_at = NULL WHERE id = ? AND deleted_at IS NOT NULL');
+  const stmt = getDb().prepare('UPDATE users SET deleted_at = NULL WHERE id = ? AND deleted_at IS NOT NULL');
   const result = stmt.run(userId);
   return result.changes > 0;
 }

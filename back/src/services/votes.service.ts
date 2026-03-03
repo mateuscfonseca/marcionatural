@@ -1,4 +1,4 @@
-import { db } from '../db';
+import { getDb } from '../db-provider';
 import { recalculateUserPointsAfterInvalidation } from './points.service';
 
 export interface ActivityTypeVote {
@@ -37,13 +37,13 @@ function normalizeVotes(votes: ActivityTypeVote[]): ActivityTypeVote[] {
 }
 
 export async function getVotesByActivityType(activityTypeId: number): Promise<ActivityTypeVote[]> {
-  const stmt = db.prepare('SELECT * FROM activity_type_votes WHERE activity_type_id = ?');
+  const stmt = getDb().prepare('SELECT * FROM activity_type_votes WHERE activity_type_id = ?');
   const votes = stmt.all(activityTypeId) as ActivityTypeVote[];
   return normalizeVotes(votes);
 }
 
 export async function hasUserVoted(userId: number, activityTypeId: number): Promise<boolean> {
-  const stmt = db.prepare('SELECT 1 FROM activity_type_votes WHERE user_id = ? AND activity_type_id = ?');
+  const stmt = getDb().prepare('SELECT 1 FROM activity_type_votes WHERE user_id = ? AND activity_type_id = ?');
   const result = stmt.get(userId, activityTypeId);
   return !!result;
 }
@@ -53,7 +53,7 @@ export async function addVote(
   activityTypeId: number,
   voteType: number
 ): Promise<ActivityTypeVote> {
-  const stmt = db.prepare(`
+  const stmt = getDb().prepare(`
     INSERT INTO activity_type_votes (user_id, activity_type_id, vote_type)
     VALUES (?, ?, ?)
   `);
@@ -98,7 +98,7 @@ export async function checkAndUpdateValidation(
   const shouldInvalidate = negativeVotes >= threshold;
 
   // Busca status atual
-  const currentStatusStmt = db.prepare('SELECT is_validated FROM activity_types WHERE id = ?');
+  const currentStatusStmt = getDb().prepare('SELECT is_validated FROM activity_types WHERE id = ?');
   const currentStatus = currentStatusStmt.get(activityTypeId) as { is_validated: boolean } | undefined;
   const currentlyValidated = currentStatus?.is_validated ?? true;
 
@@ -106,7 +106,7 @@ export async function checkAndUpdateValidation(
 
   // Atualiza status se necessário
   if (shouldInvalidate && currentlyValidated) {
-    const updateStmt = db.prepare('UPDATE activity_types SET is_validated = FALSE WHERE id = ?');
+    const updateStmt = getDb().prepare('UPDATE activity_types SET is_validated = FALSE WHERE id = ?');
     updateStmt.run(activityTypeId);
     invalidated = true;
 
@@ -145,7 +145,7 @@ export async function getValidationStatus(activityTypeId: number): Promise<Valid
   const totalVotes = votes.length;
 
   // Busca status atual do activity_type
-  const statusStmt = db.prepare('SELECT is_validated FROM activity_types WHERE id = ?');
+  const statusStmt = getDb().prepare('SELECT is_validated FROM activity_types WHERE id = ?');
   const activityType = statusStmt.get(activityTypeId) as { is_validated: boolean } | undefined;
   const isValidated = activityType?.is_validated ?? true;
 

@@ -1,4 +1,4 @@
-import { db } from '../db';
+import { getDb } from '../db-provider';
 import { calculatePointsFromActivityType } from './points.service';
 
 export interface UserEntry {
@@ -62,7 +62,7 @@ export interface UpdateEntryDTO {
 }
 
 export async function getEntryById(id: number): Promise<UserEntry | undefined> {
-  const stmt = db.prepare(`
+  const stmt = getDb().prepare(`
     SELECT
       e.*,
       at.name as activity_type_name,
@@ -85,7 +85,7 @@ export async function getEntryById(id: number): Promise<UserEntry | undefined> {
 }
 
 export async function getEntriesByUser(userId: number): Promise<UserEntry[]> {
-  const stmt = db.prepare(`
+  const stmt = getDb().prepare(`
     SELECT
       e.*,
       at.name as activity_type_name,
@@ -104,7 +104,7 @@ export async function getEntriesByUser(userId: number): Promise<UserEntry[]> {
 }
 
 export async function getAllEntries(): Promise<UserEntry[]> {
-  const stmt = db.prepare(`
+  const stmt = getDb().prepare(`
     SELECT
       e.*,
       at.name as activity_type_name,
@@ -125,7 +125,7 @@ export async function createEntry(dto: CreateEntryDTO): Promise<UserEntry> {
   // Calcula pontos baseado no activity_type
   const points = await calculatePointsFromActivityType(dto.activityTypeId);
 
-  const stmt = db.prepare(`
+  const stmt = getDb().prepare(`
     INSERT INTO user_entries (user_id, activity_type_id, description, photo_url, photo_identifier, photo_original_name, duration_minutes, points, entry_date)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
@@ -171,7 +171,7 @@ export async function updateEntry(id: number, dto: UpdateEntryDTO): Promise<User
 
   if (updates.length > 0) {
     values.push(id);
-    const stmt = db.prepare(`
+    const stmt = getDb().prepare(`
       UPDATE user_entries
       SET ${updates.join(', ')}
       WHERE id = ?
@@ -183,13 +183,13 @@ export async function updateEntry(id: number, dto: UpdateEntryDTO): Promise<User
 }
 
 export async function deleteEntry(id: number): Promise<boolean> {
-  const stmt = db.prepare('DELETE FROM user_entries WHERE id = ?');
+  const stmt = getDb().prepare('DELETE FROM user_entries WHERE id = ?');
   const result = stmt.run(id);
   return result.changes > 0;
 }
 
 export async function getUserEntriesWithDetails(userId: number): Promise<UserEntry[]> {
-  const stmt = db.prepare(`
+  const stmt = getDb().prepare(`
     SELECT
       e.*,
       at.name as activity_type_name,
@@ -241,7 +241,7 @@ export async function getUserEntriesForLeaderboard(userId: number): Promise<{
  * Retorna true se já existir entrada de alimentação (categoria 1) para o usuário na data
  */
 export async function hasUserFoodEntryForDate(userId: number, entryDate: string): Promise<boolean> {
-  const stmt = db.prepare(`
+  const stmt = getDb().prepare(`
     SELECT COUNT(*) as count
     FROM user_entries e
     INNER JOIN activity_types at ON e.activity_type_id = at.id
@@ -255,7 +255,7 @@ export async function hasUserFoodEntryForDate(userId: number, entryDate: string)
  * Busca entrada de um usuário para uma data específica
  */
 export async function getUserEntryForDate(userId: number, entryDate: string): Promise<UserEntry | undefined> {
-  const stmt = db.prepare(`
+  const stmt = getDb().prepare(`
     SELECT
       e.*,
       at.name as activity_type_name,

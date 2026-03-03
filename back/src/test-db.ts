@@ -100,6 +100,8 @@ export function resetTestData() {
 
   // Limpa dados na ordem correta (respeitando foreign keys)
   db.run('DELETE FROM project_daily_logs');
+  db.run('DELETE FROM entry_reports');
+  db.run('DELETE FROM activity_type_votes');
   db.run('DELETE FROM user_entries');
   db.run('DELETE FROM personal_projects');
   db.run('DELETE FROM activity_types WHERE name LIKE "%Teste%" OR id > 100');
