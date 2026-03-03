@@ -39,14 +39,23 @@ export interface LeaderboardUserWithMovement extends LeaderboardUser {
   movement: 'up' | 'down' | 'same';
 }
 
+export interface LeaderboardSnapshot {
+  date: string;
+  users: Array<{
+    id: number;
+    username: string;
+    total_points: number;
+  }>;
+}
+
 export interface TimelineEntry {
   id: number;
   user_id: number;
   username: string;
-  activity_type_id: number;
-  activity_type_name: string;
-  category_id: number;
-  category_name: string;
+  activity_type_id: number | null;
+  activity_type_name: string | null;
+  category_id: number | null;
+  category_name: string | null;
   description: string;
   photo_url: string | null;
   photo_identifier: string | null;
@@ -55,6 +64,13 @@ export interface TimelineEntry {
   entry_date: string;
   created_at: string;
   is_invalidated: boolean;
+  // Campos para projetos pessoais
+  entry_type: 'activity' | 'project';
+  project_id: number | null;
+  project_name: string | null;
+  duration_minutes: number | null;
+  week_number: number | null;
+  year: number | null;
 }
 
 export interface ActivityType {

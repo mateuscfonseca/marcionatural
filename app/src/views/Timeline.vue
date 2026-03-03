@@ -75,27 +75,35 @@ function formatDate(dateStr: string): string {
   }
 }
 
-function getCategoryIcon(categoryId: number, isPositive: boolean): string {
-  if (categoryId === 1) {
+function getCategoryIcon(entry: TimelineEntry): string {
+  if (entry.entry_type === 'project') {
+    return '📚';
+  }
+  
+  if (entry.category_id === 1) {
     // Alimentação
-    return isPositive ? '🥗' : '🍔';
-  } else if (categoryId === 2) {
+    return entry.points >= 0 ? '🥗' : '🍔';
+  } else if (entry.category_id === 2) {
     // Exercício
     return '💪';
-  } else if (categoryId === 3) {
+  } else if (entry.category_id === 3) {
     // Projeto Pessoal
     return '📚';
   }
   return '📝';
 }
 
-function getCategoryName(categoryId: number): string {
+function getCategoryName(entry: TimelineEntry): string {
+  if (entry.entry_type === 'project') {
+    return 'Projeto Pessoal';
+  }
+  
   const categories: Record<number, string> = {
     1: 'Alimentação',
     2: 'Exercício',
     3: 'Projeto Pessoal',
   };
-  return categories[categoryId] || 'Atividade';
+  return categories[entry.category_id || 0] || 'Atividade';
 }
 
 function getPointsClass(points: number): string {
@@ -106,6 +114,16 @@ function getPointsClass(points: number): string {
 
 function formatPoints(points: number): string {
   return points >= 0 ? `+${points}` : `${points}`;
+}
+
+function formatDuration(minutes: number | null): string {
+  if (!minutes) return '';
+  if (minutes < 60) {
+    return `${minutes} min`;
+  }
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return mins > 0 ? `${hours}h ${mins}min` : `${hours}h`;
 }
 
 function viewUserEntries(userId: number) {
@@ -187,8 +205,8 @@ onMounted(() => {
           class="bg-white rounded-xl shadow-sm border p-3 sm:p-4 w-full overflow-hidden hover:shadow-md transition-shadow"
         >
           <div class="flex gap-2 sm:gap-4">
-            <!-- Foto -->
-            <div v-if="entry.photo_url" class="flex-shrink-0">
+            <!-- Foto (apenas para atividades) -->
+            <div v-if="entry.photo_url && entry.entry_type === 'activity'" class="flex-shrink-0">
               <img
                 :src="entry.photo_url"
                 :alt="entry.description"
@@ -196,25 +214,38 @@ onMounted(() => {
                 @click="viewUserEntries(entry.user_id)"
               />
             </div>
+            <!-- Ícone para projetos sem foto -->
+            <div v-else-if="entry.entry_type === 'project'" class="flex-shrink-0">
+              <div class="w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 bg-purple-100 rounded-lg flex items-center justify-center text-3xl">
+                📚
+              </div>
+            </div>
 
             <!-- Conteúdo -->
             <div class="flex-1 min-w-0">
               <!-- Header do card -->
               <div class="flex items-start justify-between gap-2 mb-2">
                 <div class="flex items-center gap-2 flex-wrap">
-                  <span class="text-lg">{{ getCategoryIcon(entry.category_id, entry.points >= 0) }}</span>
+                  <span class="text-lg">{{ getCategoryIcon(entry) }}</span>
                   <span class="font-semibold text-gray-900 text-sm sm:text-base">
-                    {{ entry.activity_type_name }}
+                    {{ entry.entry_type === 'project' ? entry.project_name : entry.activity_type_name }}
                   </span>
                   <span class="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
-                    {{ getCategoryName(entry.category_id) }}
+                    {{ getCategoryName(entry) }}
                   </span>
                 </div>
                 <span
+                  v-if="entry.entry_type === 'activity'"
                   class="px-2 py-1 rounded-full text-xs font-semibold flex-shrink-0"
                   :class="getPointsClass(entry.points)"
                 >
                   {{ formatPoints(entry.points) }}
+                </span>
+                <span
+                  v-else
+                  class="px-2 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 flex-shrink-0"
+                >
+                  ⏱️ {{ formatDuration(entry.duration_minutes) }}
                 </span>
               </div>
 
@@ -231,10 +262,15 @@ onMounted(() => {
                 >
                   👤 {{ entry.username }}
                 </button>
-                <span class="flex items-center gap-1">
-                  <span>📅</span>
-                  <span>{{ formatDate(entry.entry_date) }}</span>
-                </span>
+                <div class="flex items-center gap-2">
+                  <span v-if="entry.entry_type === 'project'" class="text-xs text-purple-600 font-medium">
+                    Semana {{ entry.week_number }}/{{ entry.year }}
+                  </span>
+                  <span class="flex items-center gap-1">
+                    <span>📅</span>
+                    <span>{{ formatDate(entry.entry_date) }}</span>
+                  </span>
+                </div>
               </div>
             </div>
           </div>

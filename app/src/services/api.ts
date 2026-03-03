@@ -3,6 +3,7 @@ import type {
   UserEntry,
   LeaderboardUser,
   LeaderboardUserWithMovement,
+  LeaderboardSnapshot,
   ActivityType,
   AuthResponse,
   ErrorResponse,
@@ -498,6 +499,25 @@ export async function getLeaderboardWithMovement(): Promise<{
   leaderboard: LeaderboardUserWithMovement[];
 }> {
   const response = await fetch(`${API_BASE}/leaderboard?compare=true`, {
+    credentials: 'include',
+  });
+  return handleResponse(response);
+}
+
+export async function getLeaderboardByDate(date: string): Promise<{
+  leaderboard: LeaderboardUserWithMovement[];
+  referenceDate: string;
+}> {
+  const response = await fetch(`${API_BASE}/leaderboard?date=${date}`, {
+    credentials: 'include',
+  });
+  return handleResponse(response);
+}
+
+export async function getLeaderboardHistory(weeks: number): Promise<{
+  history: LeaderboardSnapshot[];
+}> {
+  const response = await fetch(`${API_BASE}/leaderboard/history?weeks=${weeks}`, {
     credentials: 'include',
   });
   return handleResponse(response);
