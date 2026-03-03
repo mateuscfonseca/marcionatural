@@ -17,7 +17,7 @@ function toUTCDate(dateStr: string | null): string | null {
 }
 
 export async function findUserByUsername(username: string): Promise<User | undefined> {
-  const stmt = db.prepare('SELECT * FROM users WHERE username = ? AND deleted_at IS NULL');
+  const stmt = db.prepare('SELECT * FROM users WHERE username = ?');
   const user = stmt.get(username) as User | undefined;
   if (!user) return undefined;
   return {
