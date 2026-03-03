@@ -28,7 +28,7 @@ export async function findUserByUsername(username: string): Promise<User | undef
 }
 
 export async function findUserById(id: number): Promise<User | undefined> {
-  const stmt = db.prepare('SELECT * FROM users WHERE id = ? AND deleted_at IS NULL');
+  const stmt = db.prepare('SELECT * FROM users WHERE id = ?');
   const user = stmt.get(id) as User | undefined;
   if (!user) return undefined;
   return {
