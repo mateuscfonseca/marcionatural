@@ -22,6 +22,7 @@ export interface UserEntry {
   category_id?: number;
   category_name?: string;
   is_activity_validated?: boolean;
+  is_activity_positive?: boolean;
 }
 
 export interface LeaderboardUser {

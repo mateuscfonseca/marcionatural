@@ -67,6 +67,7 @@ export async function getEntryById(id: number): Promise<UserEntry | undefined> {
       e.*,
       at.name as activity_type_name,
       at.category_id,
+      at.is_positive as is_activity_positive,
       c.name as category_name,
       at.is_validated as is_activity_validated
     FROM user_entries e
@@ -89,6 +90,7 @@ export async function getEntriesByUser(userId: number): Promise<UserEntry[]> {
       e.*,
       at.name as activity_type_name,
       at.category_id,
+      at.is_positive as is_activity_positive,
       c.name as category_name,
       at.is_validated as is_activity_validated
     FROM user_entries e
@@ -107,6 +109,7 @@ export async function getAllEntries(): Promise<UserEntry[]> {
       e.*,
       at.name as activity_type_name,
       at.category_id,
+      at.is_positive as is_activity_positive,
       c.name as category_name,
       at.is_validated as is_activity_validated
     FROM user_entries e
@@ -191,6 +194,7 @@ export async function getUserEntriesWithDetails(userId: number): Promise<UserEnt
       e.*,
       at.name as activity_type_name,
       at.category_id,
+      at.is_positive as is_activity_positive,
       c.name as category_name,
       at.is_validated as is_activity_validated
     FROM user_entries e
@@ -207,7 +211,7 @@ export async function getUserEntriesWithDetails(userId: number): Promise<UserEnt
  * Busca entradas de um usuário para exibição pública (leaderboard)
  * Separa positivas e negativas, considera apenas activity_types validados
  * 
- * IMPORTANTE: Filtra por at.base_points, não por e.points
+ * IMPORTANTE: Filtra por is_positive do activity_type, não por points da entrada
  */
 export async function getUserEntriesForLeaderboard(userId: number): Promise<{
   positive: UserEntry[];
@@ -219,9 +223,11 @@ export async function getUserEntriesForLeaderboard(userId: number): Promise<{
   // Filtra apenas activity_types validados
   const validatedEntries = entries.filter(e => e.is_activity_validated);
 
-  // Filtra por base_points do activity_type, não por points da entrada
-  const positive = validatedEntries.filter(e => e.category_id === 2 || (e.category_id === 1 && e.is_activity_validated));
-  const negative = validatedEntries.filter(e => e.category_id === 1 && !e.is_activity_validated);
+  // Filtra por is_positive do activity_type
+  // Exercícios (categoria 2) são sempre positivos
+  // Alimentação (categoria 1) pode ser positiva ou negativa
+  const positive = validatedEntries.filter(e => e.category_id === 2 || (e.category_id === 1 && e.is_activity_positive));
+  const negative = validatedEntries.filter(e => e.category_id === 1 && !e.is_activity_positive);
 
   return {
     positive,
