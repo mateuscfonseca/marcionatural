@@ -35,7 +35,7 @@ function toUTCDate(dateStr: string | null): string | null {
 
 /**
  * Busca entradas para a timeline (feed de atividades)
- * Retorna entradas de atividades e logs de projetos, ordenadas por data (mais recente primeiro)
+ * Retorna atividades e logs de projetos, ordenadas por data (mais recente primeiro)
  *
  * @param limit - Quantidade máxima de entradas (padrão: 50)
  * @param offset - Offset para paginação (padrão: 0)
@@ -46,80 +46,80 @@ export async function getTimelineEntries(
   offset: number = 0,
   days?: number
 ): Promise<TimelineEntry[]> {
-  let dateFilter = '';
-  const params: (number | string)[] = [];
+  // Filtro de data usando parâmetro vinculado
+  const dateCondition = days 
+    ? "AND substr(entry_date, 1, 10) >= date('now', '-' || ? || ' days')"
+    : '';
 
-  if (days) {
-    dateFilter = `AND entry_date >= date('now', '-${days} days')`;
-  }
-
-  // UNION de atividades e logs de projetos
+  // UNION ALL de atividades e logs de projetos
   const stmt = db.prepare(`
-    SELECT
-      e.id,
-      e.user_id,
-      u.username,
-      e.activity_type_id,
-      at.name as activity_type_name,
-      at.category_id,
-      c.name as category_name,
-      e.description,
-      e.photo_url,
-      e.photo_identifier,
-      e.photo_original_name,
-      e.points,
-      e.entry_date,
-      e.created_at,
-      e.is_invalidated,
-      'activity' as entry_type,
-      NULL as project_id,
-      NULL as project_name,
-      e.duration_minutes,
-      NULL as week_number,
-      NULL as year
-    FROM user_entries e
-    INNER JOIN users u ON e.user_id = u.id
-    INNER JOIN activity_types at ON e.activity_type_id = at.id
-    INNER JOIN categories c ON at.category_id = c.id
-    WHERE e.is_invalidated = FALSE
-      AND u.deleted_at IS NULL
-      ${dateFilter}
+    SELECT * FROM (
+      SELECT
+        e.id,
+        e.user_id,
+        u.username,
+        e.activity_type_id,
+        at.name as activity_type_name,
+        at.category_id,
+        c.name as category_name,
+        e.description,
+        e.photo_url,
+        e.photo_identifier,
+        e.photo_original_name,
+        e.points,
+        e.entry_date,
+        e.created_at,
+        e.is_invalidated,
+        'activity' as entry_type,
+        NULL as project_id,
+        NULL as project_name,
+        e.duration_minutes,
+        NULL as week_number,
+        NULL as year
+      FROM user_entries e
+      INNER JOIN users u ON e.user_id = u.id
+      INNER JOIN activity_types at ON e.activity_type_id = at.id
+      INNER JOIN categories c ON at.category_id = c.id
+      WHERE e.is_invalidated = 0
+        AND u.deleted_at IS NULL
+        ${dateCondition}
 
-    UNION ALL
+      UNION ALL
 
-    SELECT
-      l.id,
-      l.user_id,
-      u.username,
-      NULL as activity_type_id,
-      NULL as activity_type_name,
-      NULL as category_id,
-      NULL as category_name,
-      'Registro de tempo no projeto' as description,
-      NULL as photo_url,
-      NULL as photo_identifier,
-      NULL as photo_original_name,
-      0 as points,
-      l.date as entry_date,
-      l.created_at,
-      FALSE as is_invalidated,
-      'project' as entry_type,
-      l.project_id,
-      p.name as project_name,
-      l.duration_minutes,
-      l.week_number,
-      l.year
-    FROM project_daily_logs l
-    INNER JOIN users u ON l.user_id = u.id
-    INNER JOIN personal_projects p ON l.project_id = p.id
-    WHERE u.deleted_at IS NULL
-      ${dateFilter}
-
+      SELECT
+        l.id,
+        l.user_id,
+        u.username,
+        NULL as activity_type_id,
+        NULL as activity_type_name,
+        NULL as category_id,
+        NULL as category_name,
+        'Registro de tempo no projeto' as description,
+        NULL as photo_url,
+        NULL as photo_identifier,
+        NULL as photo_original_name,
+        0 as points,
+        l.date as entry_date,
+        l.created_at,
+        0 as is_invalidated,
+        'project' as entry_type,
+        l.project_id,
+        p.name as project_name,
+        l.duration_minutes,
+        l.week_number,
+        l.year
+      FROM project_daily_logs l
+      INNER JOIN users u ON l.user_id = u.id
+      INNER JOIN personal_projects p ON l.project_id = p.id
+      WHERE u.deleted_at IS NULL
+        ${dateCondition}
+    )
     ORDER BY entry_date DESC, created_at DESC
     LIMIT ? OFFSET ?
   `);
 
-  const entries = stmt.all(...params, limit, offset) as TimelineEntry[];
+  const params: any[] = days ? [days, limit, offset] : [limit, offset];
+  const entries = stmt.all(...params) as TimelineEntry[];
 
   // Normaliza datas para UTC
   return entries.map(e => ({
@@ -132,11 +132,9 @@ export async function getTimelineEntries(
  * Conta total de entradas disponíveis na timeline (atividades + projetos)
  */
 export async function getTimelineEntriesCount(days?: number): Promise<number> {
-  let dateFilter = '';
-
-  if (days) {
-    dateFilter = `AND entry_date >= date('now', '-${days} days')`;
-  }
+  const dateCondition = days 
+    ? "AND substr(entry_date, 1, 10) >= date('now', '-' || ? || ' days')"
+    : '';
 
   const stmt = db.prepare(`
     SELECT COUNT(*) as count
@@ -144,9 +142,9 @@ export async function getTimelineEntriesCount(days?: number): Promise<number> {
       SELECT e.entry_date
       FROM user_entries e
       INNER JOIN users u ON e.user_id = u.id
-      WHERE e.is_invalidated = FALSE
+      WHERE e.is_invalidated = 0
         AND u.deleted_at IS NULL
-        ${dateFilter}
+        ${dateCondition}
 
       UNION ALL
 
@@ -154,10 +152,11 @@ export async function getTimelineEntriesCount(days?: number): Promise<number> {
       FROM project_daily_logs l
       INNER JOIN users u ON l.user_id = u.id
       WHERE u.deleted_at IS NULL
-        ${dateFilter}
+        ${dateCondition}
     )
   `);
 
-  const result = stmt.get() as { count: number };
+  const params: any[] = days ? [days] : [];
+  const result = stmt.get(...params) as { count: number };
   return result?.count ?? 0;
 }
