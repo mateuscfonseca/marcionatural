@@ -13,6 +13,10 @@ const showChart = ref(false);
 const referenceDate = ref<string>('');
 const pollingInterval = ref<number | null>(null);
 
+// Modal de movimentação
+const showMovementModal = ref(false);
+const selectedUserForMovement = ref<LeaderboardUserWithMovement | null>(null);
+
 async function loadLeaderboard() {
   try {
     const date = selectedDate.value ?? new Date().toISOString().split('T')[0];
@@ -48,6 +52,29 @@ function getMovementText(user: LeaderboardUserWithMovement): string {
   if (user.positionDiff === 0) return '';
   if (user.positionDiff > 0) return `+${user.positionDiff}`;
   return `${user.positionDiff}`;
+}
+
+function getMovementTooltip(user: LeaderboardUserWithMovement): string {
+  const prevPos = user.previousPosition ?? 'N/A';
+  const currPos = user.position;
+  const prevPoints = user.total_points - (user.movement === 'up' ? Math.abs(user.positionDiff) * 5 : user.movement === 'down' ? Math.abs(user.positionDiff) * 5 : 0);
+  
+  let movementText = '';
+  if (user.movement === 'up') movementText = `Subiu ${user.positionDiff} posições`;
+  else if (user.movement === 'down') movementText = `Caiu ${Math.abs(user.positionDiff)} posições`;
+  else movementText = 'Manteve a posição';
+
+  return `Posição anterior: ${prevPos}º\nPosição atual: ${currPos}º\n${movementText}`;
+}
+
+function openMovementModal(user: LeaderboardUserWithMovement) {
+  selectedUserForMovement.value = user;
+  showMovementModal.value = true;
+}
+
+function closeMovementModal() {
+  showMovementModal.value = false;
+  selectedUserForMovement.value = null;
 }
 
 function changeDate(days: number) {
@@ -199,13 +226,26 @@ onUnmounted(() => {
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-gray-600">{{ user.valid_entries_count }}</td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <div class="flex items-center gap-2">
-                  <span class="w-8 h-8 rounded-full flex items-center justify-center text-lg font-bold" :class="getMovementIcon(user).bg">
+                <div class="group relative inline-block">
+                  <span
+                    class="w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold cursor-help"
+                    :class="getMovementIcon(user).bg"
+                    :title="getMovementTooltip(user)"
+                  >
                     <span :class="getMovementIcon(user).class">{{ getMovementIcon(user).icon }}</span>
                   </span>
-                  <span v-if="user.positionDiff !== 0" class="text-sm font-semibold" :class="user.movement === 'up' ? 'text-green-600' : 'text-red-600'">
+                  <span
+                    v-if="user.positionDiff !== 0"
+                    class="ml-2 text-sm font-semibold"
+                    :class="user.movement === 'up' ? 'text-green-600' : 'text-red-600'"
+                  >
                     {{ getMovementText(user) }}
                   </span>
+                  <!-- Tooltip customizado para desktop -->
+                  <div class="hidden group-hover:block absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg whitespace-nowrap z-10">
+                    {{ getMovementTooltip(user) }}
+                    <div class="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-900"></div>
+                  </div>
                 </div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
@@ -235,7 +275,11 @@ onUnmounted(() => {
               <div class="flex items-center justify-between text-sm text-gray-500">
                 <span>{{ user.valid_entries_count }} entradas</span>
                 <div class="flex items-center gap-2">
-                  <span class="w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold" :class="getMovementIcon(user).bg">
+                  <span
+                    @click="openMovementModal(user)"
+                    class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold cursor-pointer active:scale-95 transition-transform"
+                    :class="getMovementIcon(user).bg"
+                  >
                     <span :class="getMovementIcon(user).class">{{ getMovementIcon(user).icon }}</span>
                   </span>
                   <span v-if="user.positionDiff !== 0" class="text-xs font-semibold" :class="user.movement === 'up' ? 'text-green-600' : 'text-red-600'">
@@ -252,6 +296,61 @@ onUnmounted(() => {
       </div>
 
       <div v-if="leaderboard.length === 0" class="text-center py-8 text-gray-500">Nenhum usuário cadastrado ainda.</div>
+    </div>
+
+    <!-- Modal de Movimentação (Mobile) -->
+    <div
+      v-if="showMovementModal && selectedUserForMovement"
+      class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      @click.self="closeMovementModal"
+    >
+      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+        <div class="p-6 border-b">
+          <h3 class="text-lg font-bold text-gray-800">📊 Movimentação</h3>
+        </div>
+        <div class="p-6 space-y-4">
+          <div class="flex items-center gap-3">
+            <span class="text-3xl">{{ selectedUserForMovement.position === 1 ? '🥇' : selectedUserForMovement.position === 2 ? '🥈' : selectedUserForMovement.position === 3 ? '🥉' : `#${selectedUserForMovement.position}` }}</span>
+            <div>
+              <p class="text-sm text-gray-500">Posição atual</p>
+              <p class="text-xl font-bold text-gray-900">{{ selectedUserForMovement.position }}º lugar</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            <span class="text-3xl opacity-50">{{ (selectedUserForMovement.previousPosition ?? 0) === 1 ? '🥇' : (selectedUserForMovement.previousPosition ?? 0) === 2 ? '🥈' : (selectedUserForMovement.previousPosition ?? 0) === 3 ? '🥉' : `#${selectedUserForMovement.previousPosition || '?'}` }}</span>
+            <div>
+              <p class="text-sm text-gray-500">Posição anterior</p>
+              <p class="text-xl font-bold text-gray-900">{{ selectedUserForMovement.previousPosition ?? 'N/A' }}º lugar</p>
+            </div>
+          </div>
+          <div class="border-t pt-4">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-gray-500">Pontos atuais</span>
+              <span class="font-bold" :class="selectedUserForMovement.total_points >= 0 ? 'text-green-600' : 'text-red-600'">
+                {{ formatPoints(selectedUserForMovement.total_points) }}
+              </span>
+            </div>
+          </div>
+          <div class="border-t pt-4">
+            <div class="flex items-center gap-2">
+              <span class="text-2xl">
+                {{ selectedUserForMovement.movement === 'up' ? '⬆️' : selectedUserForMovement.movement === 'down' ? '⬇️' : '➡️' }}
+              </span>
+              <span class="font-medium" :class="selectedUserForMovement.movement === 'up' ? 'text-green-600' : selectedUserForMovement.movement === 'down' ? 'text-red-600' : 'text-gray-500'">
+                {{ selectedUserForMovement.movement === 'up' ? `Subiu ${selectedUserForMovement.positionDiff} posições` : selectedUserForMovement.movement === 'down' ? `Caiu ${Math.abs(selectedUserForMovement.positionDiff)} posições` : 'Manteve a posição' }}
+              </span>
+            </div>
+          </div>
+        </div>
+        <div class="p-4 border-t bg-gray-50">
+          <button
+            @click="closeMovementModal"
+            class="w-full py-3 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800 transition-colors"
+          >
+            Fechar
+          </button>
+        </div>
+      </div>
     </div>
 
     <LeaderboardChart v-if="showChart" @close="showChart = false" />

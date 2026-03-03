@@ -1,4 +1,4 @@
-import { db } from '../db';
+import { getDb } from '../db-provider';
 
 export const POINTS_CONFIG = {
   alimentacaoPositiva: 10,
@@ -47,7 +47,7 @@ export function calculateEntryPoints(
 export async function calculatePointsFromActivityType(
   activityTypeId: number
 ): Promise<number> {
-  const stmt = db.prepare('SELECT base_points, category_id FROM activity_types WHERE id = ?');
+  const stmt = getDb().prepare('SELECT base_points, category_id FROM activity_types WHERE id = ?');
   const activityType = stmt.get(activityTypeId) as { base_points: number; category_id: number } | undefined;
   
   if (!activityType) {
@@ -73,7 +73,7 @@ export async function calculateProjectWeeklyPoints(
   year: number
 ): Promise<{ points: number; totalMinutes: number; goalMinutes: number; goalReached: boolean }> {
   // Busca meta do projeto
-  const projectStmt = db.prepare('SELECT weekly_hours_goal FROM personal_projects WHERE id = ? AND user_id = ?');
+  const projectStmt = getDb().prepare('SELECT weekly_hours_goal FROM personal_projects WHERE id = ? AND user_id = ?');
   const project = projectStmt.get(projectId, userId) as { weekly_hours_goal: number } | undefined;
   
   if (!project) {
@@ -83,7 +83,7 @@ export async function calculateProjectWeeklyPoints(
   const goalMinutes = project.weekly_hours_goal * 60;
 
   // Soma minutos da semana
-  const logStmt = db.prepare(`
+  const logStmt = getDb().prepare(`
     SELECT COALESCE(SUM(duration_minutes), 0) as total
     FROM project_daily_logs
     WHERE project_id = ? AND user_id = ? AND week_number = ? AND year = ?
@@ -103,7 +103,7 @@ export async function calculateProjectWeeklyPoints(
 }
 
 export async function getUserEntriesCount(userId: number): Promise<number> {
-  const stmt = db.prepare(`
+  const stmt = getDb().prepare(`
     SELECT COUNT(*) as count
     FROM user_entries e
     INNER JOIN activity_types at ON e.activity_type_id = at.id
@@ -118,7 +118,7 @@ export async function getUserEntriesCount(userId: number): Promise<number> {
  */
 export async function recalculateUserPointsAfterInvalidation(activityTypeId: number): Promise<void> {
   // Zera pontos de entradas com este activity_type
-  const stmt = db.prepare(`
+  const stmt = getDb().prepare(`
     UPDATE user_entries
     SET points = 0
     WHERE activity_type_id = ?
@@ -139,7 +139,7 @@ export async function getDailyFoodPoints(userId: number, date: string): Promise<
 }> {
   // Usa substr para extrair YYYY-MM-DD da data, funcionando tanto para DATE quanto DATETIME
   // Isso evita problemas de comparação em produção onde entry_date pode ser DATE ou DATETIME
-  const stmt = db.prepare(`
+  const stmt = getDb().prepare(`
     SELECT COALESCE(SUM(at.base_points), 0) as total
     FROM user_entries e
     INNER JOIN activity_types at ON e.activity_type_id = at.id
@@ -181,7 +181,7 @@ export async function getDailyFoodPoints(userId: number, date: string): Promise<
 export async function getUserTotalPoints(userId: number): Promise<number> {
   // Busca todas as datas únicas com entradas de alimentação
   // Usa substr para extrair YYYY-MM-DD, evitando problemas de comparação em produção
-  const foodDatesStmt = db.prepare(`
+  const foodDatesStmt = getDb().prepare(`
     SELECT DISTINCT substr(e.entry_date, 1, 10) as entry_date
     FROM user_entries e
     INNER JOIN activity_types at ON e.activity_type_id = at.id
@@ -204,7 +204,7 @@ export async function getUserTotalPoints(userId: number): Promise<number> {
 
   // Soma pontos de exercícios (categoria 2) - sem limite diário
   // Calcula dinamicamente: COUNT de entradas * 5 pontos
-  const exerciseStmt = db.prepare(`
+  const exerciseStmt = getDb().prepare(`
     SELECT COUNT(*) as count
     FROM user_entries e
     INNER JOIN activity_types at ON e.activity_type_id = at.id
@@ -215,7 +215,7 @@ export async function getUserTotalPoints(userId: number): Promise<number> {
   const exercisePoints = exerciseCount * POINTS_CONFIG.exercicio;
   
   // Soma pontos de projetos pessoais (semanas completas)
-  const projectsStmt = db.prepare(`
+  const projectsStmt = getDb().prepare(`
     SELECT DISTINCT project_id, week_number, year
     FROM project_daily_logs
     WHERE user_id = ?

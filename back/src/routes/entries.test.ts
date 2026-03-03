@@ -1,12 +1,12 @@
-import { describe, test, expect, beforeEach, afterEach } from 'bun:test';
-import { db } from '../db';
+import { describe, test, expect, beforeAll, beforeEach, afterAll } from 'bun:test';
+import { getTestDb, createTestDatabase, closeTestDatabase, resetTestData, SEED_IDS } from '../test-db';
 import entriesRoutes from './entries';
 import { Hono } from 'hono';
 import { generateToken } from '../utils/jwt';
 
 /**
  * Testes para validação de 1 alimentação por dia
- * 
+ *
  * Regra de negócio:
  * - Máximo 1 entrada de alimentação (categoria 1) por dia civil
  * - Limite de ±10 pontos por dia para alimentação
@@ -16,11 +16,20 @@ describe('POST /entries - Validação 1 Alimentação por Dia', () => {
   let testUserId: number;
   let testUsername: string;
   let authToken: string;
-  let foodActivityTypeId: number;
-  let foodActivityTypeIdNegative: number;
-  let exerciseActivityTypeId: number;
+  let db: ReturnType<typeof getTestDb>;
+
+  beforeAll(() => {
+    createTestDatabase();
+    db = getTestDb();
+  });
+
+  afterAll(() => {
+    closeTestDatabase();
+  });
 
   beforeEach(async () => {
+    resetTestData();
+
     // Criar usuário de teste
     testUsername = 'testuser_food_limit';
     const userResult = db.run(
@@ -34,38 +43,6 @@ describe('POST /entries - Validação 1 Alimentação por Dia', () => {
       userId: testUserId,
       username: testUsername,
     });
-
-    // Criar activity type de alimentação positiva (categoria 1)
-    const foodType = db.run(
-      'INSERT INTO activity_types (name, category_id, is_positive, base_points, is_validated) VALUES (?, ?, ?, ?, ?)',
-      ['Alimentação Limpa Teste', 1, true, 10, true]
-    );
-    foodActivityTypeId = foodType.lastInsertRowid as number;
-
-    // Criar activity type de alimentação negativa (categoria 1)
-    const foodTypeNegative = db.run(
-      'INSERT INTO activity_types (name, category_id, is_positive, base_points, is_validated) VALUES (?, ?, ?, ?, ?)',
-      ['Alimentação Suja Teste', 1, false, -10, true]
-    );
-    foodActivityTypeIdNegative = foodTypeNegative.lastInsertRowid as number;
-
-    // Criar activity type de exercício (categoria 2)
-    const exerciseType = db.run(
-      'INSERT INTO activity_types (name, category_id, is_positive, base_points, is_validated) VALUES (?, ?, ?, ?, ?)',
-      ['Exercício Teste', 2, true, 5, true]
-    );
-    exerciseActivityTypeId = exerciseType.lastInsertRowid as number;
-  });
-
-  afterEach(() => {
-    // Cleanup: Remover dados de teste em ordem inversa (FK constraints)
-    db.run('DELETE FROM user_entries WHERE user_id = ?', [testUserId]);
-    db.run('DELETE FROM activity_types WHERE id IN (?, ?, ?)', [
-      foodActivityTypeId, 
-      foodActivityTypeIdNegative, 
-      exerciseActivityTypeId
-    ]);
-    db.run('DELETE FROM users WHERE id = ?', [testUserId]);
   });
 
   const mockRequest = (body: object) => ({
@@ -82,7 +59,7 @@ describe('POST /entries - Validação 1 Alimentação por Dia', () => {
     app.route('/api/entries', entriesRoutes);
 
     const response = await app.request('/api/entries', mockRequest({
-      activityTypeId: foodActivityTypeId,
+      activityTypeId: SEED_IDS.activityTypes.alimentacaoLimpa,
       description: 'Café da manhã limpo',
       entryDate: '2025-03-03',
     }));
@@ -100,7 +77,7 @@ describe('POST /entries - Validação 1 Alimentação por Dia', () => {
 
     // Primeira alimentação - deve funcionar
     const response1 = await app.request('/api/entries', mockRequest({
-      activityTypeId: foodActivityTypeId,
+      activityTypeId: SEED_IDS.activityTypes.alimentacaoLimpa,
       description: 'Café da manhã',
       entryDate: '2025-03-03',
     }));
@@ -108,9 +85,9 @@ describe('POST /entries - Validação 1 Alimentação por Dia', () => {
 
     // Segunda alimentação no mesmo dia - deve falhar (409)
     const response2 = await app.request('/api/entries', mockRequest({
-      activityTypeId: foodActivityTypeIdNegative,
+      activityTypeId: SEED_IDS.activityTypes.alimentacaoSuja,
       description: 'Almoço sujo',
-      entryDate: '2025-03-03', // MESMO DIA
+      entryDate: '2025-03-03',
     }));
     expect(response2.status).toBe(409);
     const data = await response2.json() as { error: string };
@@ -123,7 +100,7 @@ describe('POST /entries - Validação 1 Alimentação por Dia', () => {
 
     // Dia 03
     const response1 = await app.request('/api/entries', mockRequest({
-      activityTypeId: foodActivityTypeId,
+      activityTypeId: SEED_IDS.activityTypes.alimentacaoLimpa,
       description: 'Café da manhã',
       entryDate: '2025-03-03',
     }));
@@ -131,7 +108,7 @@ describe('POST /entries - Validação 1 Alimentação por Dia', () => {
 
     // Dia 04 - deve funcionar
     const response2 = await app.request('/api/entries', mockRequest({
-      activityTypeId: foodActivityTypeId,
+      activityTypeId: SEED_IDS.activityTypes.alimentacaoLimpa,
       description: 'Café da manhã dia seguinte',
       entryDate: '2025-03-04',
     }));
@@ -144,7 +121,7 @@ describe('POST /entries - Validação 1 Alimentação por Dia', () => {
 
     // Alimentação
     const response1 = await app.request('/api/entries', mockRequest({
-      activityTypeId: foodActivityTypeId,
+      activityTypeId: SEED_IDS.activityTypes.alimentacaoLimpa,
       description: 'Almoço',
       entryDate: '2025-03-03',
     }));
@@ -152,7 +129,7 @@ describe('POST /entries - Validação 1 Alimentação por Dia', () => {
 
     // Exercício no mesmo dia - deve funcionar (categoria 2)
     const response2 = await app.request('/api/entries', mockRequest({
-      activityTypeId: exerciseActivityTypeId,
+      activityTypeId: SEED_IDS.activityTypes.exercicioFisico,
       description: 'Corrida',
       entryDate: '2025-03-03',
     }));
@@ -164,9 +141,9 @@ describe('POST /entries - Validação 1 Alimentação por Dia', () => {
     app.route('/api/entries', entriesRoutes);
 
     const response = await app.request('/api/entries', mockRequest({
-      activityTypeId: foodActivityTypeId,
+      activityTypeId: SEED_IDS.activityTypes.alimentacaoLimpa,
       description: 'Teste sem data',
-      entryDate: '', // Vazio
+      entryDate: '',
     }));
     expect(response.status).toBe(400);
     const data = await response.json() as { error: string };
@@ -178,9 +155,9 @@ describe('POST /entries - Validação 1 Alimentação por Dia', () => {
     app.route('/api/entries', entriesRoutes);
 
     const response = await app.request('/api/entries', mockRequest({
-      activityTypeId: foodActivityTypeId,
+      activityTypeId: SEED_IDS.activityTypes.alimentacaoLimpa,
       description: 'Teste formato inválido',
-      entryDate: '03/03/2025', // Formato brasileiro
+      entryDate: '03/03/2025',
     }));
     expect(response.status).toBe(400);
     const data = await response.json() as { error: string };
@@ -192,7 +169,7 @@ describe('POST /entries - Validação 1 Alimentação por Dia', () => {
     app.route('/api/entries', entriesRoutes);
 
     const response = await app.request('/api/entries', mockRequest({
-      activityTypeId: foodActivityTypeId,
+      activityTypeId: SEED_IDS.activityTypes.alimentacaoLimpa,
       description: 'Teste sem data',
       entryDate: null,
     }));
@@ -205,7 +182,7 @@ describe('POST /entries - Validação 1 Alimentação por Dia', () => {
 
     // Exercício 1
     const response1 = await app.request('/api/entries', mockRequest({
-      activityTypeId: exerciseActivityTypeId,
+      activityTypeId: SEED_IDS.activityTypes.exercicioFisico,
       description: 'Corrida manhã',
       entryDate: '2025-03-03',
     }));
@@ -213,7 +190,7 @@ describe('POST /entries - Validação 1 Alimentação por Dia', () => {
 
     // Exercício 2 no mesmo dia
     const response2 = await app.request('/api/entries', mockRequest({
-      activityTypeId: exerciseActivityTypeId,
+      activityTypeId: SEED_IDS.activityTypes.exercicioFisico,
       description: 'Musculação tarde',
       entryDate: '2025-03-03',
     }));
@@ -221,7 +198,7 @@ describe('POST /entries - Validação 1 Alimentação por Dia', () => {
 
     // Exercício 3 no mesmo dia
     const response3 = await app.request('/api/entries', mockRequest({
-      activityTypeId: exerciseActivityTypeId,
+      activityTypeId: SEED_IDS.activityTypes.exercicioFisico,
       description: 'Natação noite',
       entryDate: '2025-03-03',
     }));

@@ -1,4 +1,4 @@
-import { db } from '../db';
+import { getDb } from '../db-provider';
 
 export interface TimelineEntry {
   id: number;
@@ -52,7 +52,7 @@ export async function getTimelineEntries(
     : '';
 
   // UNION ALL de atividades e logs de projetos
-  const stmt = db.prepare(`
+  const stmt = getDb().prepare(`
     SELECT * FROM (
       SELECT
         e.id,
@@ -118,7 +118,7 @@ export async function getTimelineEntries(
     LIMIT ? OFFSET ?
   `);
 
-  const params: any[] = days ? [days, limit, offset] : [limit, offset];
+  const params: any[] = days ? [days, days, limit, offset] : [limit, offset];
   const entries = stmt.all(...params) as TimelineEntry[];
 
   // Normaliza datas para UTC
@@ -132,11 +132,11 @@ export async function getTimelineEntries(
  * Conta total de entradas disponíveis na timeline (atividades + projetos)
  */
 export async function getTimelineEntriesCount(days?: number): Promise<number> {
-  const dateCondition = days 
+  const dateCondition = days
     ? "AND substr(entry_date, 1, 10) >= date('now', '-' || ? || ' days')"
     : '';
 
-  const stmt = db.prepare(`
+  const stmt = getDb().prepare(`
     SELECT COUNT(*) as count
     FROM (
       SELECT e.entry_date
@@ -156,7 +156,7 @@ export async function getTimelineEntriesCount(days?: number): Promise<number> {
     )
   `);
 
-  const params: any[] = days ? [days] : [];
+  const params: any[] = days ? [days, days] : [];
   const result = stmt.get(...params) as { count: number };
   return result?.count ?? 0;
 }
