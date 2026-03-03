@@ -11,7 +11,7 @@ const router = useRouter();
 const { state, initAuth, isAuthenticated } = useAuth();
 
 const isAuthPage = computed(() => {
-  return ['/login', '/register', '/'].includes(route.path);
+  return ['/login', '/register', '/', '/reset-password'].includes(route.path);
 });
 
 onMounted(async () => {
