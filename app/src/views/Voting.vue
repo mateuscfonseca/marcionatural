@@ -11,6 +11,8 @@ import {
   removeEntryReport,
 } from '@/services/api';
 import type { VotingEntry, VotingStats } from '@/types';
+import { useToast } from '@/composables/useToast';
+import { createApiErrorHandler } from '@/utils/handleApiError';
 
 const availableEntries = ref<VotingEntry[]>([]);
 const invalidatedEntries = ref<VotingEntry[]>([]);
@@ -43,6 +45,9 @@ const activeTab = ref<'available' | 'invalidated' | 'my-invalidated' | 'my-repor
 const tabsContainer = ref<HTMLElement | null>(null);
 const showScrollIndicatorLeft = ref(false);
 const showScrollIndicatorRight = ref(true);
+
+const { success, error } = useToast();
+const handleApiError = createApiErrorHandler();
 
 async function loadData() {
   try {
@@ -77,14 +82,14 @@ async function loadData() {
 async function handleReport(entryId: number) {
   try {
     await reportEntry(entryId);
+    success('Report registrado com sucesso!');
     await loadData();
-  } catch (error) {
-    console.error('Erro ao reportar:', error);
-    const msg = error instanceof Error ? error.message : 'Erro ao reportar';
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Erro ao reportar';
     if (msg.includes('já reportou')) {
-      alert('Você já reportou esta entrada!');
+      error('Você já reportou esta entrada!');
     } else {
-      alert('Erro ao reportar entrada');
+      handleApiError(err, 'Erro ao reportar entrada');
     }
   }
 }
@@ -93,23 +98,23 @@ async function handleRemoveReport(entryId: number) {
   try {
     if (confirm('Tem certeza que deseja remover seu report?')) {
       await removeEntryReport(entryId);
+      success('Report removido com sucesso!');
       await loadData();
     }
-  } catch (error) {
-    console.error('Erro ao remover report:', error);
-    alert('Erro ao remover report');
+  } catch (err) {
+    handleApiError(err, 'Erro ao remover report');
   }
 }
 
-async function handleRemoveReportFromMyReports(reportId: number, entryId: number) {
+async function handleRemoveReportFromMyReports(_reportId: number, entryId: number) {
   try {
     if (confirm('Tem certeza que deseja remover este report?')) {
       await removeEntryReport(entryId);
+      success('Report removido com sucesso!');
       await loadData();
     }
-  } catch (error) {
-    console.error('Erro ao remover report:', error);
-    alert('Erro ao remover report');
+  } catch (err) {
+    handleApiError(err, 'Erro ao remover report');
   }
 }
 

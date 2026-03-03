@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { authMiddleware, type AuthRequest } from '../middleware/auth';
+import { db } from '../db';
 import {
   getEntryById,
   getEntriesByUser,
@@ -8,6 +9,8 @@ import {
   deleteEntry,
   getUserEntriesWithDetails,
   getUserEntriesForLeaderboard,
+  hasUserFoodEntryForDate,
+  getUserEntryForDate,
 } from '../services/entry.service';
 import { getActivityTypesForUser } from '../services/activity-type.service';
 import {
@@ -82,10 +85,38 @@ entries.post('/', async (c) => {
     const authRequest = c.req.raw as unknown as AuthRequest;
     const userId = authRequest.user!.userId;
     const body = await c.req.json();
-    const { activityTypeId, description, photoUrl, durationMinutes } = body;
+    const { activityTypeId, description, photoUrl, durationMinutes, entryDate } = body;
 
     if (!activityTypeId || !description) {
       return c.json({ error: 'Tipo de atividade e descrição são obrigatórios' }, 400);
+    }
+
+    // Validação: entryDate é SEMPRE obrigatório
+    if (!entryDate || typeof entryDate !== 'string') {
+      return c.json({ 
+        error: 'Data de referência é obrigatória' 
+      }, 400);
+    }
+
+    // Validar formato YYYY-MM-DD
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(entryDate)) {
+      return c.json({ 
+        error: 'Formato de data inválido. Use YYYY-MM-DD' 
+      }, 400);
+    }
+
+    // Validar 1 alimentação por dia (categoria 1)
+    const activityTypeStmt = db.prepare('SELECT category_id FROM activity_types WHERE id = ?');
+    const activityType = activityTypeStmt.get(activityTypeId) as { category_id: number } | undefined;
+
+    if (activityType && activityType.category_id === 1) {
+      const hasEntry = await hasUserFoodEntryForDate(userId, entryDate);
+      if (hasEntry) {
+        return c.json({
+          error: 'Você já registrou uma alimentação para este dia. Apenas uma entrada de alimentação é permitida por dia.'
+        }, 409);
+      }
     }
 
     const entry = await createEntry({
@@ -94,6 +125,7 @@ entries.post('/', async (c) => {
       description,
       photoUrl,
       durationMinutes,
+      entryDate,
     });
 
     return c.json({ message: 'Entrada criada com sucesso', entry }, 201);
@@ -110,7 +142,7 @@ entries.put('/:id', async (c) => {
     const userId = authRequest.user!.userId;
     const entryId = parseInt(c.req.param('id'));
     const body = await c.req.json();
-    const { description, photoUrl, durationMinutes } = body;
+    const { description, photoUrl, durationMinutes, entryDate } = body;
 
     if (isNaN(entryId)) {
       return c.json({ error: 'ID de entrada inválido' }, 400);
@@ -125,10 +157,30 @@ entries.put('/:id', async (c) => {
       return c.json({ error: 'Acesso não permitido' }, 403);
     }
 
+    // Validação: se estiver mudando a data de uma entrada de alimentação, verificar conflito
+    if (entryDate && entryDate !== entry.entry_date) {
+      const activityTypeStmt = db.prepare('SELECT category_id FROM activity_types WHERE id = ?');
+      const activityType = activityTypeStmt.get(entry.activity_type_id) as { category_id: number } | undefined;
+      
+      if (activityType && activityType.category_id === 1) {
+        const hasEntry = await hasUserFoodEntryForDate(userId, entryDate);
+        // Permite se a entrada encontrada for a mesma que está sendo editada
+        if (hasEntry) {
+          const existingEntry = await getUserEntryForDate(userId, entryDate);
+          if (existingEntry && existingEntry.id !== entryId) {
+            return c.json({ 
+              error: 'Já existe uma alimentação registrada para este dia.' 
+            }, 409);
+          }
+        }
+      }
+    }
+
     const updatedEntry = await updateEntry(entryId, {
       description,
       photoUrl,
       durationMinutes,
+      entryDate,
     });
 
     return c.json({ message: 'Entrada atualizada com sucesso', entry: updatedEntry });

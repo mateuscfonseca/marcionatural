@@ -61,6 +61,7 @@ CREATE TABLE IF NOT EXISTS user_entries (
     photo_identifier TEXT UNIQUE,
     duration_minutes INTEGER,
     points INTEGER NOT NULL DEFAULT 0,
+    entry_date DATE,
     is_invalidated BOOLEAN DEFAULT FALSE,
     invalidated_at DATETIME,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -98,6 +99,8 @@ CREATE TABLE IF NOT EXISTS project_daily_logs (
 -- Índices para performance
 CREATE INDEX IF NOT EXISTS idx_user_entries_user_id ON user_entries(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_entries_activity_type ON user_entries(activity_type_id);
+CREATE INDEX IF NOT EXISTS idx_user_entries_entry_date ON user_entries(entry_date);
+CREATE INDEX IF NOT EXISTS idx_user_entries_user_date ON user_entries(user_id, entry_date);
 CREATE INDEX IF NOT EXISTS idx_activity_type_votes ON activity_type_votes(activity_type_id);
 CREATE INDEX IF NOT EXISTS idx_project_logs_project ON project_daily_logs(project_id);
 CREATE INDEX IF NOT EXISTS idx_project_logs_user_date ON project_daily_logs(user_id, date);

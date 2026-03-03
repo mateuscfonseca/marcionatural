@@ -11,6 +11,7 @@ export interface UserEntry {
   photo_identifier: string | null;
   duration_minutes: number | null;
   points: number;
+  entry_date: string | null;
   is_invalidated: boolean;
   invalidated_at: string | null;
   created_at: string;
@@ -50,12 +51,14 @@ export interface CreateEntryDTO {
   photoIdentifier?: string;
   photoOriginalName?: string;
   durationMinutes?: number;
+  entryDate?: string;
 }
 
 export interface UpdateEntryDTO {
   description?: string;
   photoUrl?: string;
   durationMinutes?: number;
+  entryDate?: string;
 }
 
 export async function getEntryById(id: number): Promise<UserEntry | undefined> {
@@ -120,8 +123,8 @@ export async function createEntry(dto: CreateEntryDTO): Promise<UserEntry> {
   const points = await calculatePointsFromActivityType(dto.activityTypeId);
 
   const stmt = db.prepare(`
-    INSERT INTO user_entries (user_id, activity_type_id, description, photo_url, photo_identifier, photo_original_name, duration_minutes, points)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO user_entries (user_id, activity_type_id, description, photo_url, photo_identifier, photo_original_name, duration_minutes, points, entry_date)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   const result = stmt.run(
@@ -132,7 +135,8 @@ export async function createEntry(dto: CreateEntryDTO): Promise<UserEntry> {
     dto.photoIdentifier ?? null,
     dto.photoOriginalName ?? null,
     dto.durationMinutes ?? null,
-    points
+    points,
+    dto.entryDate ?? null
   );
 
   return getEntryById(result.lastInsertRowid as number) as Promise<UserEntry>;
@@ -156,6 +160,10 @@ export async function updateEntry(id: number, dto: UpdateEntryDTO): Promise<User
   if (dto.durationMinutes !== undefined) {
     updates.push('duration_minutes = ?');
     values.push(dto.durationMinutes);
+  }
+  if (dto.entryDate !== undefined) {
+    updates.push('entry_date = ?');
+    values.push(dto.entryDate);
   }
 
   if (updates.length > 0) {
@@ -205,10 +213,10 @@ export async function getUserEntriesForLeaderboard(userId: number): Promise<{
   all: UserEntry[];
 }> {
   const entries = await getEntriesByUser(userId);
-  
+
   // Filtra apenas activity_types validados
   const validatedEntries = entries.filter(e => e.is_activity_validated);
-  
+
   const positive = validatedEntries.filter(e => e.points > 0);
   const negative = validatedEntries.filter(e => e.points < 0);
 
@@ -216,5 +224,45 @@ export async function getUserEntriesForLeaderboard(userId: number): Promise<{
     positive,
     negative,
     all: entries, // Retorna todas para exibição completa
+  };
+}
+
+/**
+ * Verifica se usuário já tem uma entrada de alimentação para uma determinada data
+ * Retorna true se já existir entrada de alimentação (categoria 1) para o usuário na data
+ */
+export async function hasUserFoodEntryForDate(userId: number, entryDate: string): Promise<boolean> {
+  const stmt = db.prepare(`
+    SELECT COUNT(*) as count
+    FROM user_entries e
+    INNER JOIN activity_types at ON e.activity_type_id = at.id
+    WHERE e.user_id = ? AND e.entry_date = ? AND at.category_id = 1
+  `);
+  const result = stmt.get(userId, entryDate) as { count: number };
+  return (result?.count ?? 0) > 0;
+}
+
+/**
+ * Busca entrada de um usuário para uma data específica
+ */
+export async function getUserEntryForDate(userId: number, entryDate: string): Promise<UserEntry | undefined> {
+  const stmt = db.prepare(`
+    SELECT
+      e.*,
+      at.name as activity_type_name,
+      at.category_id,
+      c.name as category_name,
+      at.is_validated as is_activity_validated
+    FROM user_entries e
+    INNER JOIN activity_types at ON e.activity_type_id = at.id
+    INNER JOIN categories c ON at.category_id = c.id
+    WHERE e.user_id = ? AND e.entry_date = ?
+  `);
+  const entry = stmt.get(userId, entryDate) as UserEntry | undefined;
+  if (!entry) return undefined;
+  return {
+    ...entry,
+    created_at: toUTCDate(entry.created_at)!,
+    invalidated_at: toUTCDate(entry.invalidated_at),
   };
 }

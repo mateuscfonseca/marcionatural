@@ -26,6 +26,36 @@ Os pontos são **automáticos** baseados no tipo de atividade:
 | Exercício | Qualquer exercício | +5 |
 | Projeto Pessoal | Meta semanal batida | +50 |
 
+### Regras de Negócio - Alimentação
+
+#### Limite de 1 Entrada de Alimentação por Dia
+
+- **Apenas 1 registro de alimentação por dia civil**: O sistema permite apenas UMA entrada de alimentação (categoria 1) por dia
+- **Limite de ±10 pontos por dia**: O máximo de pontos de alimentação que você pode ganhar/perder por dia é +10 ou -10
+- **Data de referência obrigatória**: Toda entrada deve informar o dia em que a atividade ocorreu (formato YYYY-MM-DD)
+- **Cadastro retroativo permitido**: Você pode registrar entradas de dias anteriores
+
+#### Por que essa regra?
+
+Esta regra beneficia quem mantém uma alimentação consistente ao longo do dia inteiro, em vez de acumular pontos com múltiplas refeições individuais.
+
+#### Exemplos Práticos
+
+| Situação | Pontos | Permitido? |
+|----------|--------|------------|
+| 1 refeição limpa no dia | +10 | ✅ Sim |
+| 1 refeição suja no dia | -10 | ✅ Sim |
+| Tentar 2ª refeição no mesmo dia | — | ❌ Bloqueado |
+| Exercícios no mesmo dia | +5 por exercício | ✅ Sim (ilimitado) |
+| Alimentação em dias diferentes | +10 por dia | ✅ Sim |
+
+#### Outras Categorias
+
+| Categoria | Regra | Pontos |
+|-----------|-------|--------|
+| **Exercícios** | Ilimitados por dia | +5 por entrada |
+| **Projetos Pessoais** | Meta semanal | +50 se bater meta |
+
 ### Validação Comunitária (Reports)
 
 - Usuários **reportam entradas suspeitas** de outros usuários

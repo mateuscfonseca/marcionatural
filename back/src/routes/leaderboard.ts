@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { authMiddleware, type AuthRequest } from '../middleware/auth';
 import { findUserById } from '../services/user.service';
 import { getUserTotalPoints, getUserEntriesCount } from '../services/points.service';
-import { getEntriesByUser, getUserEntriesForLeaderboard } from '../services/entry.service';
+import { getUserEntriesForLeaderboard } from '../services/entry.service';
 import { db } from '../db';
 
 const leaderboard = new Hono();
@@ -20,27 +20,33 @@ leaderboard.use('/users/:id/entries', async (c, next) => {
 // Leaderboard - ranking de usuários por pontos (público)
 leaderboard.get('/', async (c) => {
   try {
-    const stmt = db.prepare(`
-      SELECT 
-        u.id,
-        u.username,
-        COALESCE(SUM(e.points), 0) as total_points,
-        COUNT(CASE WHEN at.is_validated = TRUE THEN 1 END) as valid_entries_count
-      FROM users u
-      LEFT JOIN user_entries e ON u.id = e.user_id
-      LEFT JOIN activity_types at ON e.activity_type_id = at.id AND at.is_validated = TRUE
-      GROUP BY u.id, u.username
-      ORDER BY total_points DESC, u.username ASC
-    `);
-    
-    const users = stmt.all() as Array<{
-      id: number;
-      username: string;
-      total_points: number;
-      valid_entries_count: number;
-    }>;
+    // Busca apenas usuários ativos (não excluídos)
+    const usersStmt = db.prepare('SELECT id, username FROM users WHERE deleted_at IS NULL');
+    const users = usersStmt.all() as Array<{ id: number; username: string }>;
 
-    return c.json({ leaderboard: users });
+    // Calcula pontos totais para cada usuário considerando limite diário
+    const usersWithPoints = await Promise.all(
+      users.map(async (user) => {
+        const totalPoints = await getUserTotalPoints(user.id);
+        const entriesCount = await getUserEntriesCount(user.id);
+        return {
+          id: user.id,
+          username: user.username,
+          total_points: totalPoints,
+          valid_entries_count: entriesCount,
+        };
+      })
+    );
+
+    // Ordena por pontos (decrescente) e depois por username (crescente)
+    usersWithPoints.sort((a, b) => {
+      if (b.total_points !== a.total_points) {
+        return b.total_points - a.total_points;
+      }
+      return a.username.localeCompare(b.username);
+    });
+
+    return c.json({ leaderboard: usersWithPoints });
   } catch (error) {
     console.error('Erro ao buscar leaderboard:', error);
     return c.json({ error: 'Erro interno do servidor' }, 500);
@@ -76,30 +82,28 @@ leaderboard.get('/users/:id/entries', async (c) => {
   }
 });
 
-// Listar todos os usuários (público)
+// Listar todos os usuários (público) - inclui excluídos
 leaderboard.get('/users', async (c) => {
   try {
-    const stmt = db.prepare(`
-      SELECT 
-        u.id,
-        u.username,
-        u.created_at,
-        COALESCE(SUM(e.points), 0) as total_points
-      FROM users u
-      LEFT JOIN user_entries e ON u.id = e.user_id
-      LEFT JOIN activity_types at ON e.activity_type_id = at.id AND at.is_validated = TRUE
-      GROUP BY u.id, u.username, u.created_at
-      ORDER BY u.username ASC
-    `);
-    
-    const users = stmt.all() as Array<{
-      id: number;
-      username: string;
-      created_at: string;
-      total_points: number;
-    }>;
+    const usersStmt = db.prepare('SELECT id, username, created_at, deleted_at FROM users ORDER BY username ASC');
+    const users = usersStmt.all() as Array<{ id: number; username: string; created_at: string; deleted_at: string | null }>;
 
-    return c.json({ users });
+    const usersWithPoints = await Promise.all(
+      users.map(async (user) => {
+        const totalPoints = await getUserTotalPoints(user.id);
+        return {
+          id: user.id,
+          username: user.username,
+          created_at: user.created_at,
+          total_points: totalPoints,
+          deleted_at: user.deleted_at,
+        };
+      })
+    );
+
+    usersWithPoints.sort((a, b) => a.username.localeCompare(b.username));
+
+    return c.json({ users: usersWithPoints });
   } catch (error) {
     console.error('Erro ao buscar usuários:', error);
     return c.json({ error: 'Erro interno do servidor' }, 500);

@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { initDatabase } from './db';
+import { MigrationManager } from './migrations';
 import authRoutes from './routes/auth';
 import leaderboardRoutes from './routes/leaderboard';
 import entriesRoutes from './routes/entries';
@@ -12,8 +13,11 @@ import uploadRoutes from './routes/upload';
 import { join } from 'path';
 import { existsSync } from 'fs';
 
-// Inicializa banco de dados
+// Inicializa banco de dados (schema + seeds)
 initDatabase();
+
+// Executa migrações pendentes
+MigrationManager.runAll();
 
 const app = new Hono();
 

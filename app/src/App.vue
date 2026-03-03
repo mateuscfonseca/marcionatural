@@ -5,6 +5,7 @@ import { useAuth } from '@/stores/auth';
 import Sidebar from '@/components/Sidebar.vue';
 import Header from '@/components/Header.vue';
 import FloatingActionButton from '@/components/FloatingActionButton.vue';
+import ToastContainer from '@/components/ToastContainer.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -36,6 +37,7 @@ onMounted(async () => {
   </div>
 
   <div v-else-if="isAuthPage">
+    <ToastContainer />
     <router-view />
   </div>
 
@@ -50,5 +52,8 @@ onMounted(async () => {
 
     <!-- Botão Flutuante de Ação Rápida -->
     <FloatingActionButton />
+
+    <!-- Container de Notificações Toast -->
+    <ToastContainer />
   </div>
 </template>

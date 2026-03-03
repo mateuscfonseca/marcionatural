@@ -1,7 +1,16 @@
 import { Hono } from 'hono';
 import bcrypt from 'bcryptjs';
 import { generateToken, verifyToken } from '../utils/jwt';
-import { findUserByUsername, createUser, findUserById, getAllUsers, updateUserPassword } from '../services/user.service';
+import {
+  findUserByUsername,
+  createUser,
+  findUserById,
+  getAllUsers,
+  updateUserPassword,
+  softDeleteUser,
+  restoreUser,
+  findDeletedUserById,
+} from '../services/user.service';
 
 const auth = new Hono();
 
@@ -214,6 +223,82 @@ auth.post('/reset-password', async (c) => {
     });
   } catch (error) {
     console.error('Erro no reset de senha:', error);
+    return c.json({ error: 'Erro interno do servidor' }, 500);
+  }
+});
+
+// Excluir usuário (lógico)
+auth.post('/users/:id/delete', async (c) => {
+  try {
+    const userId = parseInt(c.req.param('id'));
+
+    if (isNaN(userId)) {
+      return c.json({ error: 'ID de usuário inválido' }, 400);
+    }
+
+    // Verifica se usuário existe (pode estar excluído)
+    const user = await findDeletedUserById(userId);
+    if (!user) {
+      return c.json({ error: 'Usuário não encontrado' }, 404);
+    }
+
+    if (user.deleted_at) {
+      return c.json({ error: 'Usuário já está excluído' }, 400);
+    }
+
+    // Faz exclusão lógica
+    const deleted = await softDeleteUser(userId);
+    if (!deleted) {
+      return c.json({ error: 'Erro ao excluir usuário' }, 500);
+    }
+
+    return c.json({
+      message: 'Usuário excluído com sucesso',
+      user: {
+        id: user.id,
+        username: user.username,
+      },
+    });
+  } catch (error) {
+    console.error('Erro na exclusão de usuário:', error);
+    return c.json({ error: 'Erro interno do servidor' }, 500);
+  }
+});
+
+// Reativar usuário excluído
+auth.post('/users/:id/restore', async (c) => {
+  try {
+    const userId = parseInt(c.req.param('id'));
+
+    if (isNaN(userId)) {
+      return c.json({ error: 'ID de usuário inválido' }, 400);
+    }
+
+    // Verifica se usuário existe
+    const user = await findDeletedUserById(userId);
+    if (!user) {
+      return c.json({ error: 'Usuário não encontrado' }, 404);
+    }
+
+    if (!user.deleted_at) {
+      return c.json({ error: 'Usuário não está excluído' }, 400);
+    }
+
+    // Reativa usuário
+    const restored = await restoreUser(userId);
+    if (!restored) {
+      return c.json({ error: 'Erro ao reativar usuário' }, 500);
+    }
+
+    return c.json({
+      message: 'Usuário reativado com sucesso',
+      user: {
+        id: user.id,
+        username: user.username,
+      },
+    });
+  } catch (error) {
+    console.error('Erro na reativação de usuário:', error);
     return c.json({ error: 'Erro interno do servidor' }, 500);
   }
 });

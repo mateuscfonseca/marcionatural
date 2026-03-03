@@ -9,6 +9,8 @@ import {
   logProjectTime,
 } from '@/services/api';
 import type { PersonalProject, WeeklyProgress } from '@/types';
+import { useToast } from '@/composables/useToast';
+import { createApiErrorHandler } from '@/utils/handleApiError';
 
 const projects = ref<PersonalProject[]>([]);
 const loading = ref(true);
@@ -18,6 +20,9 @@ const showLogModal = ref(false);
 const selectedProject = ref<PersonalProject | null>(null);
 const showProgressModal = ref(false);
 const currentProgress = ref<WeeklyProgress | null>(null);
+
+const { success } = useToast();
+const handleApiError = createApiErrorHandler();
 
 // Form
 const name = ref('');
@@ -63,18 +68,19 @@ async function handleSubmit() {
         description: description.value,
         weeklyHoursGoal: weeklyHoursGoal.value,
       });
+      success('Projeto atualizado com sucesso!');
     } else {
       await createProject({
         name: name.value,
         description: description.value,
         weeklyHoursGoal: weeklyHoursGoal.value,
       });
+      success('Projeto criado com sucesso!');
     }
     showModal.value = false;
     await loadProjects();
   } catch (error) {
-    console.error('Erro ao salvar projeto:', error);
-    alert('Erro ao salvar projeto');
+    handleApiError(error, 'Erro ao salvar projeto');
   }
 }
 
@@ -84,7 +90,7 @@ async function handleDelete(id: number) {
     await deleteProject(id);
     await loadProjects();
   } catch (error) {
-    console.error('Erro ao deletar projeto:', error);
+    handleApiError(error, 'Erro ao deletar projeto');
   }
 }
 
@@ -101,10 +107,9 @@ async function handleLogTime() {
     await logProjectTime(selectedProject.value.id, logDuration.value, logDate.value || undefined);
     showLogModal.value = false;
     await loadProjects();
-    alert('Tempo registrado com sucesso!');
+    success('Tempo registrado com sucesso!');
   } catch (error) {
-    console.error('Erro ao registrar tempo:', error);
-    alert('Erro ao registrar tempo');
+    handleApiError(error, 'Erro ao registrar tempo');
   }
 }
 

@@ -16,13 +16,30 @@ import type {
 
 const API_BASE = '/api';
 
+/**
+ * Erro personalizado para erros de API
+ * Preserva a mensagem de erro vinda do servidor
+ */
+export class ApiError extends Error {
+  public status: number;
+  public data?: any;
+
+  constructor(message: string, status: number, data?: any) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.data = data;
+  }
+}
+
 async function handleResponse<T>(response: Response): Promise<T> {
   const data = await response.json();
-  
+
   if (!response.ok) {
-    throw new Error((data as ErrorResponse).error || 'Erro na requisição');
+    const errorMessage = (data as ErrorResponse).error || 'Erro na requisição';
+    throw new ApiError(errorMessage, response.status, data);
   }
-  
+
   return data as T;
 }
 
@@ -79,6 +96,28 @@ export async function resetPassword(userId: number, newPassword: string): Promis
   return handleResponse(response);
 }
 
+export async function deleteUser(userId: number): Promise<{
+  message: string;
+  user: { id: number; username: string };
+}> {
+  const response = await fetch(`${API_BASE}/auth/users/${userId}/delete`, {
+    method: 'POST',
+    credentials: 'include',
+  });
+  return handleResponse(response);
+}
+
+export async function restoreUser(userId: number): Promise<{
+  message: string;
+  user: { id: number; username: string };
+}> {
+  const response = await fetch(`${API_BASE}/auth/users/${userId}/restore`, {
+    method: 'POST',
+    credentials: 'include',
+  });
+  return handleResponse(response);
+}
+
 // Leaderboard
 export async function getLeaderboard(): Promise<{ leaderboard: LeaderboardUser[] }> {
   const response = await fetch(`${API_BASE}/leaderboard`, {
@@ -123,6 +162,7 @@ export async function createEntry(data: {
   photoIdentifier?: string;
   photoOriginalName?: string;
   durationMinutes?: number;
+  entryDate?: string;
 }): Promise<{ message: string; entry: UserEntry }> {
   const response = await fetch(`${API_BASE}/entries`, {
     method: 'POST',
@@ -135,7 +175,7 @@ export async function createEntry(data: {
 
 export async function updateEntry(
   id: number,
-  data: { description?: string; photoUrl?: string; durationMinutes?: number }
+  data: { description?: string; photoUrl?: string; durationMinutes?: number; entryDate?: string }
 ): Promise<{ message: string; entry: UserEntry }> {
   const response = await fetch(`${API_BASE}/entries/${id}`, {
     method: 'PUT',

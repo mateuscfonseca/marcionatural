@@ -1,6 +1,7 @@
 export interface User {
   id: number;
   username: string;
+  deleted_at?: string | null;
 }
 
 export interface UserEntry {
@@ -13,6 +14,7 @@ export interface UserEntry {
   photo_identifier: string | null;
   duration_minutes: number | null;
   points: number;
+  entry_date: string | null;
   is_invalidated: boolean;
   invalidated_at: string | null;
   created_at: string;

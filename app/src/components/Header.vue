@@ -40,7 +40,7 @@ async function handleLogout() {
         @click="handleLogout"
         class="px-3 sm:px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors flex items-center gap-2 text-sm sm:text-base"
       >
-        <span>🚪</span>
+        <span class="icon-[mdi--logout-variant] w-5 h-5"></span>
         <span class="hidden sm:inline">Logout</span>
       </button>
     </div>

@@ -102,39 +102,6 @@ export async function calculateProjectWeeklyPoints(
   };
 }
 
-export async function getUserTotalPoints(userId: number): Promise<number> {
-  // Soma pontos de entradas com activity_types validados
-  const entriesStmt = db.prepare(`
-    SELECT COALESCE(SUM(e.points), 0) as total
-    FROM user_entries e
-    INNER JOIN activity_types at ON e.activity_type_id = at.id
-    WHERE e.user_id = ? AND at.is_validated = TRUE
-  `);
-  const entriesResult = entriesStmt.get(userId) as { total: number };
-
-  // Soma pontos de projetos pessoais (semanas completas)
-  const projectsStmt = db.prepare(`
-    SELECT DISTINCT project_id, week_number, year
-    FROM project_daily_logs
-    WHERE user_id = ?
-  `);
-  const projectLogs = projectsStmt.all(userId) as Array<{ project_id: number; week_number: number; year: number }>;
-
-  let projectPoints = 0;
-  const processedWeeks = new Set<string>();
-  
-  for (const log of projectLogs) {
-    const weekKey = `${log.project_id}-${log.week_number}-${log.year}`;
-    if (processedWeeks.has(weekKey)) continue;
-    processedWeeks.add(weekKey);
-
-    const result = await calculateProjectWeeklyPoints(userId, log.project_id, log.week_number, log.year);
-    projectPoints += result.points;
-  }
-
-  return (entriesResult?.total ?? 0) + projectPoints;
-}
-
 export async function getUserEntriesCount(userId: number): Promise<number> {
   const stmt = db.prepare(`
     SELECT COUNT(*) as count
@@ -157,4 +124,103 @@ export async function recalculateUserPointsAfterInvalidation(activityTypeId: num
     WHERE activity_type_id = ?
   `);
   stmt.run(activityTypeId);
+}
+
+/**
+ * Calcula pontos diários de alimentação com limite de 10 pontos por dia
+ * Retorna o total de pontos de alimentação para um determinado dia (máximo 10, mínimo -10)
+ */
+export async function getDailyFoodPoints(userId: number, date: string): Promise<{
+  points: number;
+  rawPoints: number;
+  capped: boolean;
+}> {
+  const stmt = db.prepare(`
+    SELECT COALESCE(SUM(e.points), 0) as total
+    FROM user_entries e
+    INNER JOIN activity_types at ON e.activity_type_id = at.id
+    WHERE e.user_id = ? AND e.entry_date = ? AND at.category_id = 1 AND at.is_validated = TRUE
+  `);
+  const result = stmt.get(userId, date) as { total: number };
+  const rawPoints = result?.total ?? 0;
+  
+  // Aplica limite de 10 pontos (positivos ou negativos)
+  let points = rawPoints;
+  let capped = false;
+  
+  if (rawPoints > 10) {
+    points = 10;
+    capped = true;
+  } else if (rawPoints < -10) {
+    points = -10;
+    capped = true;
+  }
+  
+  return {
+    points,
+    rawPoints,
+    capped,
+  };
+}
+
+/**
+ * Calcula pontos totais de um usuário considerando limite diário de alimentação
+ * - Alimentação: máximo 10 pontos por dia (positivos ou negativos)
+ * - Exercícios: 5 pontos por entrada (ilimitados por dia)
+ * - Projetos pessoais: 50 pontos por semana com meta batida
+ */
+export async function getUserTotalPoints(userId: number): Promise<number> {
+  // Busca todas as datas únicas com entradas de alimentação
+  const foodDatesStmt = db.prepare(`
+    SELECT DISTINCT e.entry_date
+    FROM user_entries e
+    INNER JOIN activity_types at ON e.activity_type_id = at.id
+    WHERE e.user_id = ? AND e.entry_date IS NOT NULL AND at.category_id = 1 AND at.is_validated = TRUE
+  `);
+  const foodDates = foodDatesStmt.all(userId) as Array<{ entry_date: string }>;
+  
+  let totalFoodPoints = 0;
+  const processedDates = new Set<string>();
+  
+  // Calcula pontos de alimentação por dia com limite de 10
+  for (const dateRow of foodDates) {
+    const date = dateRow.entry_date;
+    if (!date || processedDates.has(date)) continue;
+    processedDates.add(date);
+    
+    const dailyPoints = await getDailyFoodPoints(userId, date);
+    totalFoodPoints += dailyPoints.points;
+  }
+  
+  // Soma pontos de exercícios (categoria 2) - sem limite diário
+  const exerciseStmt = db.prepare(`
+    SELECT COALESCE(SUM(e.points), 0) as total
+    FROM user_entries e
+    INNER JOIN activity_types at ON e.activity_type_id = at.id
+    WHERE e.user_id = ? AND at.category_id = 2 AND at.is_validated = TRUE
+  `);
+  const exerciseResult = exerciseStmt.get(userId) as { total: number };
+  const exercisePoints = exerciseResult?.total ?? 0;
+  
+  // Soma pontos de projetos pessoais (semanas completas)
+  const projectsStmt = db.prepare(`
+    SELECT DISTINCT project_id, week_number, year
+    FROM project_daily_logs
+    WHERE user_id = ?
+  `);
+  const projectLogs = projectsStmt.all(userId) as Array<{ project_id: number; week_number: number; year: number }>;
+  
+  let projectPoints = 0;
+  const processedWeeks = new Set<string>();
+  
+  for (const log of projectLogs) {
+    const weekKey = `${log.project_id}-${log.week_number}-${log.year}`;
+    if (processedWeeks.has(weekKey)) continue;
+    processedWeeks.add(weekKey);
+    
+    const result = await calculateProjectWeeklyPoints(userId, log.project_id, log.week_number, log.year);
+    projectPoints += result.points;
+  }
+  
+  return totalFoodPoints + exercisePoints + projectPoints;
 }

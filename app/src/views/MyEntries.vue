@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
-import { getMyEntries, createEntry, updateEntry, deleteEntry, getValidatedActivityTypes, uploadImage } from '@/services/api';
+import { getMyEntries, deleteEntry, getValidatedActivityTypes } from '@/services/api';
 import type { UserEntry, ActivityType } from '@/types';
+import EntryFormModal from '@/components/EntryFormModal.vue';
 
 const entries = ref<UserEntry[]>([]);
 const activityTypes = ref<ActivityType[]>([]);
@@ -15,15 +16,6 @@ const entryToDelete = ref<number | null>(null);
 const currentPagePositive = ref(1);
 const currentPageNegative = ref(1);
 const entriesPerPage = ref(6);
-
-// Form
-const selectedActivityType = ref<number | null>(null);
-const description = ref('');
-const durationMinutes = ref<number | undefined>(undefined);
-const photoUrl = ref('');
-const photoFile = ref<File | null>(null);
-const photoPreview = ref<string | null>(null);
-const isUploading = ref(false);
 
 const positiveEntries = computed(() => entries.value.filter(e => e.points > 0 && e.is_activity_validated));
 const negativeEntries = computed(() => entries.value.filter(e => e.points < 0 && e.is_activity_validated));
@@ -77,69 +69,16 @@ async function loadEntries() {
 
 function openNewEntryModal() {
   editingEntry.value = null;
-  selectedActivityType.value = null;
-  description.value = '';
-  durationMinutes.value = undefined;
-  photoUrl.value = '';
-  photoFile.value = null;
-  photoPreview.value = null;
   showModal.value = true;
 }
 
 function openEditModal(entry: UserEntry) {
   editingEntry.value = entry;
-  selectedActivityType.value = entry.activity_type_id;
-  description.value = entry.description;
-  durationMinutes.value = entry.duration_minutes ?? undefined;
-  photoUrl.value = entry.photo_url ?? '';
-  photoFile.value = null;
-  photoPreview.value = entry.photo_url ?? null;
   showModal.value = true;
 }
 
 async function handleSubmit() {
-  try {
-    let finalPhotoUrl = photoUrl.value;
-    let photoIdentifier: string | undefined;
-    let photoOriginalName: string | undefined;
-
-    // Upload de imagem se houver arquivo
-    if (photoFile.value) {
-      isUploading.value = true;
-      const uploadResult = await uploadImage(photoFile.value);
-      finalPhotoUrl = uploadResult.image.url;
-      photoIdentifier = uploadResult.image.identifier;
-      photoOriginalName = uploadResult.image.originalName;
-      isUploading.value = false;
-    }
-
-    if (editingEntry.value) {
-      await updateEntry(editingEntry.value.id, {
-        description: description.value,
-        durationMinutes: durationMinutes.value,
-        photoUrl: finalPhotoUrl || undefined,
-      });
-    } else {
-      if (!selectedActivityType.value) {
-        alert('Selecione um tipo de atividade');
-        return;
-      }
-      await createEntry({
-        activityTypeId: selectedActivityType.value,
-        description: description.value,
-        photoUrl: finalPhotoUrl || undefined,
-        photoIdentifier,
-        photoOriginalName,
-        durationMinutes: durationMinutes.value,
-      });
-    }
-    showModal.value = false;
-    await loadEntries();
-  } catch (error) {
-    console.error('Erro ao salvar entrada:', error);
-    isUploading.value = false;
-    alert('Erro ao salvar entrada');
-  }
+  await loadEntries();
 }
 
 function confirmDelete(id: number) {
@@ -176,21 +115,6 @@ function formatDate(dateStr: string): string {
 
 function getActivityTypeName(id: number): string {
   return activityTypes.value.find(at => at.id === id)?.name || 'Desconhecido';
-}
-
-function handlePhotoChange(event: Event) {
-  const target = event.target as HTMLInputElement;
-  const file = target.files?.[0];
-  if (file) {
-    photoFile.value = file;
-    photoPreview.value = URL.createObjectURL(file);
-  }
-}
-
-function clearPhoto() {
-  photoFile.value = null;
-  photoPreview.value = null;
-  photoUrl.value = '';
 }
 
 onMounted(loadEntries);
@@ -243,7 +167,9 @@ onMounted(loadEntries);
                     <span class="px-2 py-1 rounded text-xs font-semibold bg-green-100 text-green-800 whitespace-nowrap">
                       +{{ entry.points }} pts
                     </span>
-                    <span class="text-xs text-gray-500">{{ formatDate(entry.created_at).split(' ')[0] }}</span>
+                    <span class="text-xs text-gray-500">
+                      📅 {{ entry.entry_date ? new Date(entry.entry_date + 'T00:00:00').toLocaleDateString('pt-BR') : formatDate(entry.created_at).split(' ')[0] }}
+                    </span>
                   </div>
                   <p class="text-sm text-gray-700 line-clamp-2 mb-1">{{ entry.description }}</p>
                   <div v-if="entry.duration_minutes" class="text-xs text-gray-500">
@@ -319,7 +245,9 @@ onMounted(loadEntries);
                     <span class="px-2 py-1 rounded text-xs font-semibold bg-red-100 text-red-800 whitespace-nowrap">
                       {{ entry.points }} pts
                     </span>
-                    <span class="text-xs text-gray-500">{{ formatDate(entry.created_at).split(' ')[0] }}</span>
+                    <span class="text-xs text-gray-500">
+                      📅 {{ entry.entry_date ? new Date(entry.entry_date + 'T00:00:00').toLocaleDateString('pt-BR') : formatDate(entry.created_at).split(' ')[0] }}
+                    </span>
                   </div>
                   <p class="text-sm text-gray-700 line-clamp-2 mb-1">{{ entry.description }}</p>
                   <div v-if="entry.duration_minutes" class="text-xs text-gray-500">
@@ -391,7 +319,9 @@ onMounted(loadEntries);
                   <span class="px-2 py-1 rounded text-xs font-semibold bg-gray-300 text-gray-700 whitespace-nowrap">
                     0 pts
                   </span>
-                  <span class="text-xs text-gray-500">{{ formatDate(entry.created_at).split(' ')[0] }}</span>
+                  <span class="text-xs text-gray-500">
+                    📅 {{ entry.entry_date ? new Date(entry.entry_date + 'T00:00:00').toLocaleDateString('pt-BR') : formatDate(entry.created_at).split(' ')[0] }}
+                  </span>
                 </div>
                 <p class="text-sm text-gray-600 line-clamp-2 mb-1">{{ entry.description }}</p>
                 <p class="text-xs text-red-600 font-medium">❌ Tipo invalidado</p>
@@ -403,103 +333,13 @@ onMounted(loadEntries);
     </div>
 
     <!-- Modal de Criar/Editar -->
-    <div v-if="showModal" class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div class="p-4 sm:p-6 border-b">
-          <h2 class="text-lg sm:text-xl font-bold text-gray-800">
-            {{ editingEntry ? 'Editar Entrada' : 'Nova Entrada' }}
-          </h2>
-        </div>
-
-        <form @submit.prevent="handleSubmit" class="p-4 sm:p-6 space-y-4">
-          <div v-if="!editingEntry">
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              Tipo de Atividade
-            </label>
-            <select
-              v-model="selectedActivityType"
-              required
-              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-sm sm:text-base"
-            >
-              <option value="" disabled>Selecione...</option>
-              <option v-for="type in activityTypes" :key="type.id" :value="type.id">
-                {{ type.name }} ({{ type.is_positive ? '+' : '' }}{{ type.base_points }} pts)
-              </option>
-            </select>
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Descrição</label>
-            <textarea
-              v-model="description"
-              required
-              rows="3"
-              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-sm sm:text-base"
-              placeholder="Descreva sua atividade..."
-            ></textarea>
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              Duração (minutos, opcional)
-            </label>
-            <input
-              v-model.number="durationMinutes"
-              type="number"
-              min="1"
-              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-sm sm:text-base"
-              placeholder="Ex: 30"
-            />
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              Foto Evidência (opcional)
-            </label>
-            
-            <!-- Preview da foto -->
-            <div v-if="photoPreview" class="mb-3 relative">
-              <img :src="photoPreview" alt="Preview" class="max-h-48 rounded-lg object-cover w-full" />
-              <button
-                type="button"
-                @click="clearPhoto"
-                class="absolute top-2 right-2 bg-red-600 text-white rounded-full p-2 hover:bg-red-700 shadow-lg"
-              >
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <!-- Input de upload -->
-            <input
-              type="file"
-              accept="image/*"
-              @change="handlePhotoChange"
-              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-sm"
-            />
-            <p class="text-xs text-gray-500 mt-1">Formatos: JPG, PNG, GIF, WebP. Máx: 5MB</p>
-          </div>
-
-          <div class="flex gap-3 pt-4">
-            <button
-              type="button"
-              @click="showModal = false"
-              class="flex-1 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm sm:text-base font-medium"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              :disabled="isUploading"
-              class="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 text-sm sm:text-base font-medium"
-            >
-              {{ isUploading ? 'Enviando...' : (editingEntry ? 'Salvar' : 'Criar') }}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <EntryFormModal
+      v-model="showModal"
+      :entry="editingEntry"
+      :activity-types="activityTypes"
+      :show-activity-type-select="!editingEntry"
+      @submitted="handleSubmit"
+    />
 
     <!-- Modal de Confirmação de Exclusão -->
     <div v-if="showDeleteConfirm" class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
