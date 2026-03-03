@@ -246,12 +246,13 @@ export async function getEntriesAvailableToReport(
       u.username,
       e.description,
       e.photo_url,
-      e.points,
+      at.base_points as points,
       e.created_at,
       e.is_invalidated,
       (SELECT COUNT(*) FROM entry_reports er WHERE er.entry_id = e.id) as report_count
     FROM user_entries e
     INNER JOIN users u ON e.user_id = u.id
+    INNER JOIN activity_types at ON e.activity_type_id = at.id
     WHERE e.user_id != ?
       AND e.id NOT IN (
         SELECT entry_id FROM entry_reports WHERE reporter_user_id = ?
@@ -299,12 +300,13 @@ export async function getInvalidatedEntries(): Promise<Array<{
       u.username,
       e.description,
       e.photo_url,
-      e.points,
+      at.base_points as points,
       e.created_at,
       e.invalidated_at,
       (SELECT COUNT(*) FROM entry_reports er WHERE er.entry_id = e.id) as report_count
     FROM user_entries e
     INNER JOIN users u ON e.user_id = u.id
+    INNER JOIN activity_types at ON e.activity_type_id = at.id
     WHERE e.is_invalidated = TRUE
     ORDER BY e.invalidated_at DESC
   `);
@@ -347,11 +349,12 @@ export async function getUserInvalidatedEntries(
       e.id,
       e.description,
       e.photo_url,
-      e.points,
+      at.base_points as points,
       e.created_at,
       e.invalidated_at,
       (SELECT COUNT(*) FROM entry_reports er WHERE er.entry_id = e.id) as report_count
     FROM user_entries e
+    INNER JOIN activity_types at ON e.activity_type_id = at.id
     WHERE e.user_id = ? AND e.is_invalidated = TRUE
     ORDER BY e.invalidated_at DESC
   `);
@@ -393,13 +396,14 @@ export async function getMyEntriesWithReports(
       e.id,
       e.description,
       e.photo_url,
-      e.points,
+      at.base_points as points,
       e.created_at,
       e.is_invalidated,
       COUNT(er.id) as report_count,
       MIN(er.created_at) as report_created_at
     FROM user_entries e
     LEFT JOIN entry_reports er ON e.id = er.entry_id
+    INNER JOIN activity_types at ON e.activity_type_id = at.id
     WHERE e.user_id = ?
     GROUP BY e.id
     HAVING report_count > 0
@@ -492,7 +496,7 @@ export async function getMyReports(
       er.entry_id,
       e.description as entry_description,
       e.photo_url as entry_photo_url,
-      e.points as entry_points,
+      at.base_points as entry_points,
       e.created_at as entry_created_at,
       e.is_invalidated as entry_is_invalidated,
       er.created_at as report_created_at,
@@ -501,6 +505,7 @@ export async function getMyReports(
     FROM entry_reports er
     INNER JOIN user_entries e ON er.entry_id = e.id
     INNER JOIN users u ON e.user_id = u.id
+    INNER JOIN activity_types at ON e.activity_type_id = at.id
     WHERE er.reporter_user_id = ?
     ORDER BY er.created_at DESC
   `);

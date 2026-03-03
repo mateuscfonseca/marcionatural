@@ -129,6 +129,8 @@ export async function recalculateUserPointsAfterInvalidation(activityTypeId: num
 /**
  * Calcula pontos diários de alimentação com limite de 10 pontos por dia
  * Retorna o total de pontos de alimentação para um determinado dia (máximo 10, mínimo -10)
+ * 
+ * IMPORTANTE: Calcula pontos dinamicamente baseado no activity_type, não usa e.points
  */
 export async function getDailyFoodPoints(userId: number, date: string): Promise<{
   points: number;
@@ -136,8 +138,9 @@ export async function getDailyFoodPoints(userId: number, date: string): Promise<
   capped: boolean;
 }> {
   // Usa DATE() para extrair apenas a parte da data, ignorando hora
+  // Calcula pontos somando base_points do activity_type (não e.points)
   const stmt = db.prepare(`
-    SELECT COALESCE(SUM(e.points), 0) as total
+    SELECT COALESCE(SUM(at.base_points), 0) as total
     FROM user_entries e
     INNER JOIN activity_types at ON e.activity_type_id = at.id
     WHERE e.user_id = ? AND DATE(e.entry_date) = DATE(?) AND at.category_id = 1 AND at.is_validated = TRUE
@@ -169,6 +172,8 @@ export async function getDailyFoodPoints(userId: number, date: string): Promise<
  * - Alimentação: máximo 10 pontos por dia (positivos ou negativos)
  * - Exercícios: 5 pontos por entrada (ilimitados por dia)
  * - Projetos pessoais: 50 pontos por semana com meta batida
+ * 
+ * IMPORTANTE: Calcula pontos dinamicamente baseado nos activity_types, não usa e.points
  */
 export async function getUserTotalPoints(userId: number): Promise<number> {
   // Busca todas as datas únicas com entradas de alimentação (usando DATE() para extrair apenas a data)
@@ -179,29 +184,30 @@ export async function getUserTotalPoints(userId: number): Promise<number> {
     WHERE e.user_id = ? AND e.entry_date IS NOT NULL AND at.category_id = 1 AND at.is_validated = TRUE
   `);
   const foodDates = foodDatesStmt.all(userId) as Array<{ entry_date: string }>;
-  
+
   let totalFoodPoints = 0;
   const processedDates = new Set<string>();
-  
+
   // Calcula pontos de alimentação por dia com limite de 10
   for (const dateRow of foodDates) {
     const date = dateRow.entry_date;
     if (!date || processedDates.has(date)) continue;
     processedDates.add(date);
-    
+
     const dailyPoints = await getDailyFoodPoints(userId, date);
     totalFoodPoints += dailyPoints.points;
   }
-  
+
   // Soma pontos de exercícios (categoria 2) - sem limite diário
+  // Calcula dinamicamente: COUNT de entradas * 5 pontos
   const exerciseStmt = db.prepare(`
-    SELECT COALESCE(SUM(e.points), 0) as total
+    SELECT COUNT(*) as count
     FROM user_entries e
     INNER JOIN activity_types at ON e.activity_type_id = at.id
     WHERE e.user_id = ? AND at.category_id = 2 AND at.is_validated = TRUE
   `);
-  const exerciseResult = exerciseStmt.get(userId) as { total: number };
-  const exercisePoints = exerciseResult?.total ?? 0;
+  const exerciseResult = exerciseStmt.get(userId) as { count: number };
+  const exercisePoints = (exerciseResult?.count ?? 0) * POINTS_CONFIG.exercicio;
   
   // Soma pontos de projetos pessoais (semanas completas)
   const projectsStmt = db.prepare(`

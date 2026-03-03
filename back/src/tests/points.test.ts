@@ -52,10 +52,11 @@ describe('Points Service', () => {
   describe('getDailyFoodPoints', () => {
     test('deve calcular pontos de alimentação de um único dia', async () => {
       // Cria entrada de alimentação positiva para 2024-01-15
+      // Nota: Não precisamos mais inserir points, o cálculo é feito pelo activity_type
       db.run(`
-        INSERT INTO user_entries (user_id, activity_type_id, description, points, entry_date)
-        VALUES (?, ?, ?, ?, ?)
-      `, [testUserId, testActivityTypeIds.positive, 'Almoço saudável', 10, '2024-01-15']);
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date)
+        VALUES (?, ?, ?, ?)
+      `, [testUserId, testActivityTypeIds.positive, 'Almoço saudável', '2024-01-15']);
 
       const result = await getDailyFoodPoints(testUserId, '2024-01-15');
       expect(result.points).toBe(10);
@@ -66,19 +67,19 @@ describe('Points Service', () => {
     test('deve limitar a 10 pontos positivos por dia', async () => {
       // Cria múltiplas entradas positivas no mesmo dia
       db.run(`
-        INSERT INTO user_entries (user_id, activity_type_id, description, points, entry_date)
-        VALUES (?, ?, ?, ?, ?)
-      `, [testUserId, testActivityTypeIds.positive, 'Café da manhã', 10, '2024-01-15']);
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date)
+        VALUES (?, ?, ?, ?)
+      `, [testUserId, testActivityTypeIds.positive, 'Café da manhã', '2024-01-15']);
 
       db.run(`
-        INSERT INTO user_entries (user_id, activity_type_id, description, points, entry_date)
-        VALUES (?, ?, ?, ?, ?)
-      `, [testUserId, testActivityTypeIds.positive, 'Almoço', 10, '2024-01-15']);
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date)
+        VALUES (?, ?, ?, ?)
+      `, [testUserId, testActivityTypeIds.positive, 'Almoço', '2024-01-15']);
 
       db.run(`
-        INSERT INTO user_entries (user_id, activity_type_id, description, points, entry_date)
-        VALUES (?, ?, ?, ?, ?)
-      `, [testUserId, testActivityTypeIds.positive, 'Jantar', 10, '2024-01-15']);
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date)
+        VALUES (?, ?, ?, ?)
+      `, [testUserId, testActivityTypeIds.positive, 'Jantar', '2024-01-15']);
 
       const result = await getDailyFoodPoints(testUserId, '2024-01-15');
       expect(result.points).toBe(10); // Limitado a 10
@@ -89,14 +90,14 @@ describe('Points Service', () => {
     test('deve limitar a -10 pontos negativos por dia', async () => {
       // Cria múltiplas entradas negativas no mesmo dia
       db.run(`
-        INSERT INTO user_entries (user_id, activity_type_id, description, points, entry_date)
-        VALUES (?, ?, ?, ?, ?)
-      `, [testUserId, testActivityTypeIds.negative, 'Café da manhã ruim', -10, '2024-01-15']);
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date)
+        VALUES (?, ?, ?, ?)
+      `, [testUserId, testActivityTypeIds.negative, 'Café da manhã ruim', '2024-01-15']);
 
       db.run(`
-        INSERT INTO user_entries (user_id, activity_type_id, description, points, entry_date)
-        VALUES (?, ?, ?, ?, ?)
-      `, [testUserId, testActivityTypeIds.negative, 'Almoço ruim', -10, '2024-01-15']);
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date)
+        VALUES (?, ?, ?, ?)
+      `, [testUserId, testActivityTypeIds.negative, 'Almoço ruim', '2024-01-15']);
 
       const result = await getDailyFoodPoints(testUserId, '2024-01-15');
       expect(result.points).toBe(-10); // Limitado a -10
@@ -107,19 +108,19 @@ describe('Points Service', () => {
     test('deve somar pontos de dias diferentes corretamente', async () => {
       // Cria entradas em dias diferentes
       db.run(`
-        INSERT INTO user_entries (user_id, activity_type_id, description, points, entry_date)
-        VALUES (?, ?, ?, ?, ?)
-      `, [testUserId, testActivityTypeIds.positive, 'Dia 1', 10, '2024-01-15']);
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date)
+        VALUES (?, ?, ?, ?)
+      `, [testUserId, testActivityTypeIds.positive, 'Dia 1', '2024-01-15']);
 
       db.run(`
-        INSERT INTO user_entries (user_id, activity_type_id, description, points, entry_date)
-        VALUES (?, ?, ?, ?, ?)
-      `, [testUserId, testActivityTypeIds.positive, 'Dia 2', 10, '2024-01-16']);
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date)
+        VALUES (?, ?, ?, ?)
+      `, [testUserId, testActivityTypeIds.positive, 'Dia 2', '2024-01-16']);
 
       db.run(`
-        INSERT INTO user_entries (user_id, activity_type_id, description, points, entry_date)
-        VALUES (?, ?, ?, ?, ?)
-      `, [testUserId, testActivityTypeIds.positive, 'Dia 3', 10, '2024-01-17']);
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date)
+        VALUES (?, ?, ?, ?)
+      `, [testUserId, testActivityTypeIds.positive, 'Dia 3', '2024-01-17']);
 
       // Cada dia deve ter 10 pontos
       const day1 = await getDailyFoodPoints(testUserId, '2024-01-15');
@@ -134,9 +135,9 @@ describe('Points Service', () => {
     test('deve comparar datas corretamente mesmo com timestamp', async () => {
       // Cria entrada com data completa (YYYY-MM-DD HH:MM:SS)
       db.run(`
-        INSERT INTO user_entries (user_id, activity_type_id, description, points, entry_date)
-        VALUES (?, ?, ?, ?, ?)
-      `, [testUserId, testActivityTypeIds.positive, 'Entrada com timestamp', 10, '2024-01-15 10:30:00']);
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date)
+        VALUES (?, ?, ?, ?)
+      `, [testUserId, testActivityTypeIds.positive, 'Entrada com timestamp', '2024-01-15 10:30:00']);
 
       // Busca usando apenas a data (YYYY-MM-DD)
       const result = await getDailyFoodPoints(testUserId, '2024-01-15');
@@ -148,19 +149,19 @@ describe('Points Service', () => {
     test('deve somar pontos de alimentação de múltiplos dias', async () => {
       // Cria entradas em 3 dias diferentes
       db.run(`
-        INSERT INTO user_entries (user_id, activity_type_id, description, points, entry_date)
-        VALUES (?, ?, ?, ?, ?)
-      `, [testUserId, testActivityTypeIds.positive, 'Dia 1', 10, '2024-01-15']);
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date)
+        VALUES (?, ?, ?, ?)
+      `, [testUserId, testActivityTypeIds.positive, 'Dia 1', '2024-01-15']);
 
       db.run(`
-        INSERT INTO user_entries (user_id, activity_type_id, description, points, entry_date)
-        VALUES (?, ?, ?, ?, ?)
-      `, [testUserId, testActivityTypeIds.positive, 'Dia 2', 10, '2024-01-16']);
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date)
+        VALUES (?, ?, ?, ?)
+      `, [testUserId, testActivityTypeIds.positive, 'Dia 2', '2024-01-16']);
 
       db.run(`
-        INSERT INTO user_entries (user_id, activity_type_id, description, points, entry_date)
-        VALUES (?, ?, ?, ?, ?)
-      `, [testUserId, testActivityTypeIds.positive, 'Dia 3', 10, '2024-01-17']);
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date)
+        VALUES (?, ?, ?, ?)
+      `, [testUserId, testActivityTypeIds.positive, 'Dia 3', '2024-01-17']);
 
       const totalPoints = await getUserTotalPoints(testUserId);
       expect(totalPoints).toBe(30); // 10 + 10 + 10
@@ -169,19 +170,19 @@ describe('Points Service', () => {
     test('deve aplicar limite diário de 10 pontos para alimentação', async () => {
       // Cria 3 entradas no mesmo dia (30 pontos raw, mas limitado a 10)
       db.run(`
-        INSERT INTO user_entries (user_id, activity_type_id, description, points, entry_date)
-        VALUES (?, ?, ?, ?, ?)
-      `, [testUserId, testActivityTypeIds.positive, 'Entrada 1', 10, '2024-01-15']);
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date)
+        VALUES (?, ?, ?, ?)
+      `, [testUserId, testActivityTypeIds.positive, 'Entrada 1', '2024-01-15']);
 
       db.run(`
-        INSERT INTO user_entries (user_id, activity_type_id, description, points, entry_date)
-        VALUES (?, ?, ?, ?, ?)
-      `, [testUserId, testActivityTypeIds.positive, 'Entrada 2', 10, '2024-01-15']);
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date)
+        VALUES (?, ?, ?, ?)
+      `, [testUserId, testActivityTypeIds.positive, 'Entrada 2', '2024-01-15']);
 
       db.run(`
-        INSERT INTO user_entries (user_id, activity_type_id, description, points, entry_date)
-        VALUES (?, ?, ?, ?, ?)
-      `, [testUserId, testActivityTypeIds.positive, 'Entrada 3', 10, '2024-01-15']);
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date)
+        VALUES (?, ?, ?, ?)
+      `, [testUserId, testActivityTypeIds.positive, 'Entrada 3', '2024-01-15']);
 
       const totalPoints = await getUserTotalPoints(testUserId);
       expect(totalPoints).toBe(10); // Limitado a 10 por dia
@@ -190,30 +191,30 @@ describe('Points Service', () => {
     test('deve somar pontos de alimentação e exercícios', async () => {
       // Alimentação: 2 dias com 10 pontos cada = 20 pontos
       db.run(`
-        INSERT INTO user_entries (user_id, activity_type_id, description, points, entry_date)
-        VALUES (?, ?, ?, ?, ?)
-      `, [testUserId, testActivityTypeIds.positive, 'Dia 1', 10, '2024-01-15']);
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date)
+        VALUES (?, ?, ?, ?)
+      `, [testUserId, testActivityTypeIds.positive, 'Dia 1', '2024-01-15']);
 
       db.run(`
-        INSERT INTO user_entries (user_id, activity_type_id, description, points, entry_date)
-        VALUES (?, ?, ?, ?, ?)
-      `, [testUserId, testActivityTypeIds.positive, 'Dia 2', 10, '2024-01-16']);
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date)
+        VALUES (?, ?, ?, ?)
+      `, [testUserId, testActivityTypeIds.positive, 'Dia 2', '2024-01-16']);
 
       // Exercícios: 3 entradas com 5 pontos cada = 15 pontos (sem limite diário)
       db.run(`
-        INSERT INTO user_entries (user_id, activity_type_id, description, points, entry_date)
-        VALUES (?, ?, ?, ?, ?)
-      `, [testUserId, testActivityTypeIds.exercise, 'Exercício 1', 5, '2024-01-15']);
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date)
+        VALUES (?, ?, ?, ?)
+      `, [testUserId, testActivityTypeIds.exercise, 'Exercício 1', '2024-01-15']);
 
       db.run(`
-        INSERT INTO user_entries (user_id, activity_type_id, description, points, entry_date)
-        VALUES (?, ?, ?, ?, ?)
-      `, [testUserId, testActivityTypeIds.exercise, 'Exercício 2', 5, '2024-01-15']);
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date)
+        VALUES (?, ?, ?, ?)
+      `, [testUserId, testActivityTypeIds.exercise, 'Exercício 2', '2024-01-15']);
 
       db.run(`
-        INSERT INTO user_entries (user_id, activity_type_id, description, points, entry_date)
-        VALUES (?, ?, ?, ?, ?)
-      `, [testUserId, testActivityTypeIds.exercise, 'Exercício 3', 5, '2024-01-16']);
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date)
+        VALUES (?, ?, ?, ?)
+      `, [testUserId, testActivityTypeIds.exercise, 'Exercício 3', '2024-01-16']);
 
       const totalPoints = await getUserTotalPoints(testUserId);
       expect(totalPoints).toBe(35); // 20 (alimentação) + 15 (exercícios)
@@ -222,19 +223,19 @@ describe('Points Service', () => {
     test('deve lidar com entradas com timestamp completo', async () => {
       // Cria entradas com timestamps completos
       db.run(`
-        INSERT INTO user_entries (user_id, activity_type_id, description, points, entry_date)
-        VALUES (?, ?, ?, ?, ?)
-      `, [testUserId, testActivityTypeIds.positive, 'Manhã', 10, '2024-01-15 08:00:00']);
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date)
+        VALUES (?, ?, ?, ?)
+      `, [testUserId, testActivityTypeIds.positive, 'Manhã', '2024-01-15 08:00:00']);
 
       db.run(`
-        INSERT INTO user_entries (user_id, activity_type_id, description, points, entry_date)
-        VALUES (?, ?, ?, ?, ?)
-      `, [testUserId, testActivityTypeIds.positive, 'Tarde', 10, '2024-01-16 14:30:00']);
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date)
+        VALUES (?, ?, ?, ?)
+      `, [testUserId, testActivityTypeIds.positive, 'Tarde', '2024-01-16 14:30:00']);
 
       db.run(`
-        INSERT INTO user_entries (user_id, activity_type_id, description, points, entry_date)
-        VALUES (?, ?, ?, ?, ?)
-      `, [testUserId, testActivityTypeIds.positive, 'Noite', 10, '2024-01-17 20:45:00']);
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date)
+        VALUES (?, ?, ?, ?)
+      `, [testUserId, testActivityTypeIds.positive, 'Noite', '2024-01-17 20:45:00']);
 
       const totalPoints = await getUserTotalPoints(testUserId);
       expect(totalPoints).toBe(30); // 10 + 10 + 10 em dias diferentes
@@ -248,21 +249,21 @@ describe('Points Service', () => {
     test('deve somar alimentação positiva e negativa corretamente', async () => {
       // Dia 1: +10 (positiva)
       db.run(`
-        INSERT INTO user_entries (user_id, activity_type_id, description, points, entry_date)
-        VALUES (?, ?, ?, ?, ?)
-      `, [testUserId, testActivityTypeIds.positive, 'Dia 1', 10, '2024-01-15']);
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date)
+        VALUES (?, ?, ?, ?)
+      `, [testUserId, testActivityTypeIds.positive, 'Dia 1', '2024-01-15']);
 
       // Dia 2: -10 (negativa)
       db.run(`
-        INSERT INTO user_entries (user_id, activity_type_id, description, points, entry_date)
-        VALUES (?, ?, ?, ?, ?)
-      `, [testUserId, testActivityTypeIds.negative, 'Dia 2', -10, '2024-01-16']);
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date)
+        VALUES (?, ?, ?, ?)
+      `, [testUserId, testActivityTypeIds.negative, 'Dia 2', '2024-01-16']);
 
       // Dia 3: +10 (positiva)
       db.run(`
-        INSERT INTO user_entries (user_id, activity_type_id, description, points, entry_date)
-        VALUES (?, ?, ?, ?, ?)
-      `, [testUserId, testActivityTypeIds.positive, 'Dia 3', 10, '2024-01-17']);
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date)
+        VALUES (?, ?, ?, ?)
+      `, [testUserId, testActivityTypeIds.positive, 'Dia 3', '2024-01-17']);
 
       const totalPoints = await getUserTotalPoints(testUserId);
       expect(totalPoints).toBe(10); // 10 + (-10) + 10 = 10

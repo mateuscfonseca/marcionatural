@@ -206,6 +206,8 @@ export async function getUserEntriesWithDetails(userId: number): Promise<UserEnt
 /**
  * Busca entradas de um usuário para exibição pública (leaderboard)
  * Separa positivas e negativas, considera apenas activity_types validados
+ * 
+ * IMPORTANTE: Filtra por at.base_points, não por e.points
  */
 export async function getUserEntriesForLeaderboard(userId: number): Promise<{
   positive: UserEntry[];
@@ -217,8 +219,9 @@ export async function getUserEntriesForLeaderboard(userId: number): Promise<{
   // Filtra apenas activity_types validados
   const validatedEntries = entries.filter(e => e.is_activity_validated);
 
-  const positive = validatedEntries.filter(e => e.points > 0);
-  const negative = validatedEntries.filter(e => e.points < 0);
+  // Filtra por base_points do activity_type, não por points da entrada
+  const positive = validatedEntries.filter(e => e.category_id === 2 || (e.category_id === 1 && e.is_activity_validated));
+  const negative = validatedEntries.filter(e => e.category_id === 1 && !e.is_activity_validated);
 
   return {
     positive,

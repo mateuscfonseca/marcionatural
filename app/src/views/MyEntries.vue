@@ -17,8 +17,8 @@ const currentPagePositive = ref(1);
 const currentPageNegative = ref(1);
 const entriesPerPage = ref(6);
 
-const positiveEntries = computed(() => entries.value.filter(e => e.points > 0 && e.is_activity_validated));
-const negativeEntries = computed(() => entries.value.filter(e => e.points < 0 && e.is_activity_validated));
+const positiveEntries = computed(() => entries.value.filter(e => e.category_id === 2 && e.is_activity_validated));
+const negativeEntries = computed(() => entries.value.filter(e => e.category_id === 1 && e.is_activity_validated));
 const invalidatedEntries = computed(() => entries.value.filter(e => !e.is_activity_validated));
 
 // Paginação
