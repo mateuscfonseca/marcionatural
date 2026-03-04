@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeAll, beforeEach, afterAll } from 'bun:test';
 import { getTestDb, createTestDatabase, closeTestDatabase, resetTestData, SEED_IDS } from '../test-db';
-import entriesRoutes from './entries';
+import entriesRoutes from '../routes/entries';
 import { Hono } from 'hono';
 import { generateToken } from '../utils/jwt';
 

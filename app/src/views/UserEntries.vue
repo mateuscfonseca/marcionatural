@@ -79,13 +79,14 @@ async function handleReportFromModal() {
 }
 
 function formatDate(dateStr: string | null): string {
+  if(!dateStr?.includes('T')){
+    dateStr += 'T00:00:00.000';
+  }
   if (!dateStr) return '';
   return new Date(dateStr).toLocaleDateString('pt-BR', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
   });
 }
 
@@ -217,7 +218,7 @@ onMounted(() => {
                   <p class="text-sm text-gray-700 line-clamp-2 mb-1">{{ entry.description }}</p>
                   <div class="flex items-center gap-2 text-xs text-gray-500">
                     <span v-if="entry.duration_minutes">⏱️ {{ entry.duration_minutes }} min</span>
-                    <span>📅 {{ formatDate(entry.entry_date).split(' ')[0] }}</span>
+                    <span>📅 {{ formatDate(entry.entry_date) }}</span>
                   </div>
                 </div>
               </div>
