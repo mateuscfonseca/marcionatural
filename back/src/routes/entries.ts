@@ -9,10 +9,11 @@ import {
   deleteEntry,
   getUserEntriesWithDetails,
   getUserEntriesForLeaderboard,
-  hasUserFoodEntryForDate,
+  hasUserEntryForCategoryDate,
   getUserEntryForDate,
 } from '../services/entry.service';
 import { getActivityTypesForUser } from '../services/activity-type.service';
+import { CategoryId, CategoryNames } from '../utils/category.enum';
 import {
   createEntryReport,
   removeEntryReport,
@@ -101,20 +102,21 @@ entries.post('/', async (c) => {
     // Validar formato YYYY-MM-DD
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!dateRegex.test(entryDate)) {
-      return c.json({ 
-        error: 'Formato de data inválido. Use YYYY-MM-DD' 
+      return c.json({
+        error: 'Formato de data inválido. Use YYYY-MM-DD'
       }, 400);
     }
 
-    // Validar 1 alimentação por dia (categoria 1)
+    // Validar 1 entrada por categoria por dia
     const activityTypeStmt = db.prepare('SELECT category_id FROM activity_types WHERE id = ?');
     const activityType = activityTypeStmt.get(activityTypeId) as { category_id: number } | undefined;
 
-    if (activityType && activityType.category_id === 1) {
-      const hasEntry = await hasUserFoodEntryForDate(userId, entryDate);
+    if (activityType) {
+      const hasEntry = await hasUserEntryForCategoryDate(userId, entryDate, activityType.category_id);
       if (hasEntry) {
+        const categoryName = CategoryNames[activityType.category_id as CategoryId] || 'atividade';
         return c.json({
-          error: 'Você já registrou uma alimentação para este dia. Apenas uma entrada de alimentação é permitida por dia.'
+          error: `Você já registrou uma entrada de ${categoryName.toLowerCase()} para este dia. Apenas uma entrada por categoria é permitida por dia.`
         }, 409);
       }
     }
@@ -157,19 +159,20 @@ entries.put('/:id', async (c) => {
       return c.json({ error: 'Acesso não permitido' }, 403);
     }
 
-    // Validação: se estiver mudando a data de uma entrada de alimentação, verificar conflito
+    // Validação: se estiver mudando a data, verificar conflito na categoria
     if (entryDate && entryDate !== entry.entry_date) {
       const activityTypeStmt = db.prepare('SELECT category_id FROM activity_types WHERE id = ?');
       const activityType = activityTypeStmt.get(entry.activity_type_id) as { category_id: number } | undefined;
-      
-      if (activityType && activityType.category_id === 1) {
-        const hasEntry = await hasUserFoodEntryForDate(userId, entryDate);
+
+      if (activityType) {
+        const hasEntry = await hasUserEntryForCategoryDate(userId, entryDate, activityType.category_id);
         // Permite se a entrada encontrada for a mesma que está sendo editada
         if (hasEntry) {
           const existingEntry = await getUserEntryForDate(userId, entryDate);
           if (existingEntry && existingEntry.id !== entryId) {
-            return c.json({ 
-              error: 'Já existe uma alimentação registrada para este dia.' 
+            const categoryName = CategoryNames[activityType.category_id as CategoryId] || 'atividade';
+            return c.json({
+              error: `Já existe uma entrada de ${categoryName.toLowerCase()} registrada para este dia.`
             }, 409);
           }
         }

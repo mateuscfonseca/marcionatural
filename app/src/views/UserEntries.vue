@@ -24,7 +24,7 @@ const entryReports = ref<EntryReport[]>([]);
 const hasReported = ref(false);
 
 const positiveEntries = computed(() => entries.value.filter(e => e.category_id === 2 || (e.category_id === 1 && e.is_activity_positive)));
-const negativeEntries = computed(() => entries.value.filter(e => e.category_id === 1 && !e.is_activity_positive));
+const negativeEntries = computed(() => entries.value.filter(e => e.category_id === 4 || (e.category_id === 1 && !e.is_activity_positive)));
 const invalidatedEntries = computed(() => entries.value.filter(e => !e.is_activity_validated));
 
 async function loadEntries() {
@@ -104,6 +104,7 @@ function getActivityTypeIcon(categoryId?: number): string {
     case 1: return '🍽️';
     case 2: return '🏃';
     case 3: return '📚';
+    case 4: return '🚬';
     default: return '📝';
   }
 }

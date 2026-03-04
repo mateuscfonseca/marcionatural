@@ -16,11 +16,13 @@ export const SEED_IDS = {
     refeicao: 1,
     exercicio: 2,
     projeto_pessoal: 3,
+    entorpecentes: 4,
   },
   activityTypes: {
     alimentacaoLimpa: 1,
     alimentacaoSuja: 2,
     exercicioFisico: 3,
+    usarTabaco: 4,
   },
 } as const;
 

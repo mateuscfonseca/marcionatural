@@ -168,7 +168,7 @@ describe('Points Service', () => {
       expect(totalPoints).toBe(10);
     });
 
-    test('deve somar pontos de alimentação e exercícios', async () => {
+    test('deve somar pontos de alimentação e exercícios com teto diário', async () => {
       db.run(`
         INSERT INTO user_entries (user_id, activity_type_id, description, entry_date)
         VALUES (?, ?, ?, ?)
@@ -194,8 +194,11 @@ describe('Points Service', () => {
         VALUES (?, ?, ?, ?)
       `, [testUserId, SEED_IDS.activityTypes.exercicioFisico, 'Exercício 3', '2024-01-16']);
 
+      // Alimentação: 10 + 10 = 20
+      // Exercícios: teto de 5/dia → 5 (dia 15) + 5 (dia 16) = 10
+      // Total: 30 pontos
       const totalPoints = await getUserTotalPoints(testUserId);
-      expect(totalPoints).toBe(35);
+      expect(totalPoints).toBe(30);
     });
 
     test('deve lidar com entradas com timestamp completo', async () => {
@@ -241,6 +244,57 @@ describe('Points Service', () => {
 
       const totalPoints = await getUserTotalPoints(testUserId);
       expect(totalPoints).toBe(10);
+    });
+
+    test('deve aplicar teto de -5 pontos por dia para entorpecentes', async () => {
+      db.run(`
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date)
+        VALUES (?, ?, ?, ?)
+      `, [testUserId, SEED_IDS.activityTypes.usarTabaco, 'Fumou 1', '2024-01-15']);
+
+      db.run(`
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date)
+        VALUES (?, ?, ?, ?)
+      `, [testUserId, SEED_IDS.activityTypes.usarTabaco, 'Fumou 2', '2024-01-15']);
+
+      db.run(`
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date)
+        VALUES (?, ?, ?, ?)
+      `, [testUserId, SEED_IDS.activityTypes.usarTabaco, 'Fumou 3', '2024-01-16']);
+
+      // Entorpecentes: teto de -5/dia → -5 (dia 15) + -5 (dia 16) = -10
+      const totalPoints = await getUserTotalPoints(testUserId);
+      expect(totalPoints).toBe(-10);
+    });
+
+    test('deve calcular pontos misturando todas as categorias com tetos', async () => {
+      // Dia 15: alimentação limpa (+10) + exercício (+5) + tabaco (-5) = 10
+      db.run(`
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date)
+        VALUES (?, ?, ?, ?)
+      `, [testUserId, SEED_IDS.activityTypes.alimentacaoLimpa, 'Almoço', '2024-01-15']);
+      db.run(`
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date)
+        VALUES (?, ?, ?, ?)
+      `, [testUserId, SEED_IDS.activityTypes.exercicioFisico, 'Treino', '2024-01-15']);
+      db.run(`
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date)
+        VALUES (?, ?, ?, ?)
+      `, [testUserId, SEED_IDS.activityTypes.usarTabaco, 'Cigarro', '2024-01-15']);
+
+      // Dia 16: alimentação suja (-10) + exercício (+5) = -5
+      db.run(`
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date)
+        VALUES (?, ?, ?, ?)
+      `, [testUserId, SEED_IDS.activityTypes.alimentacaoSuja, 'Jantar', '2024-01-16']);
+      db.run(`
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date)
+        VALUES (?, ?, ?, ?)
+      `, [testUserId, SEED_IDS.activityTypes.exercicioFisico, 'Caminhada', '2024-01-16']);
+
+      // Total: 10 + (-5) = 5 pontos
+      const totalPoints = await getUserTotalPoints(testUserId);
+      expect(totalPoints).toBe(5);
     });
   });
 });

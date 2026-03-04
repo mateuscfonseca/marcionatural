@@ -40,19 +40,19 @@ describe('Timeline Service', () => {
     test('deve retornar entradas de atividades ordenadas por data (mais recente primeiro)', async () => {
       // Cria entradas de atividade em datas diferentes usando seeds
       db.run(`
-        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date, points)
-        VALUES (?, ?, ?, ?, ?)
-      `, [testUserId, SEED_IDS.activityTypes.alimentacaoLimpa, 'Atividade antiga', '2024-01-10', 10]);
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date)
+        VALUES (?, ?, ?, ?)
+      `, [testUserId, SEED_IDS.activityTypes.alimentacaoLimpa, 'Atividade antiga', '2024-01-10']);
 
       db.run(`
-        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date, points)
-        VALUES (?, ?, ?, ?, ?)
-      `, [testUserId, SEED_IDS.activityTypes.alimentacaoLimpa, 'Atividade recente', '2024-01-20', 10]);
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date)
+        VALUES (?, ?, ?, ?)
+      `, [testUserId, SEED_IDS.activityTypes.alimentacaoLimpa, 'Atividade recente', '2024-01-20']);
 
       db.run(`
-        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date, points)
-        VALUES (?, ?, ?, ?, ?)
-      `, [testUserId, SEED_IDS.activityTypes.alimentacaoLimpa, 'Atividade média', '2024-01-15', 10]);
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date)
+        VALUES (?, ?, ?, ?)
+      `, [testUserId, SEED_IDS.activityTypes.alimentacaoLimpa, 'Atividade média', '2024-01-15']);
 
       const entries = await getTimelineEntries(50, 0);
 
@@ -80,9 +80,9 @@ describe('Timeline Service', () => {
 
     test('deve misturar atividades e projetos na ordenação', async () => {
       db.run(`
-        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date, points)
-        VALUES (?, ?, ?, ?, ?)
-      `, [testUserId, SEED_IDS.activityTypes.alimentacaoLimpa, 'Atividade 1', '2024-01-10', 10]);
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date)
+        VALUES (?, ?, ?, ?)
+      `, [testUserId, SEED_IDS.activityTypes.alimentacaoLimpa, 'Atividade 1', '2024-01-10']);
 
       db.run(`
         INSERT INTO project_daily_logs (project_id, user_id, date, duration_minutes, week_number, year)
@@ -90,9 +90,9 @@ describe('Timeline Service', () => {
       `, [testProjectIds.project1, testUserId, '2024-01-15', 60, 3, 2024]);
 
       db.run(`
-        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date, points)
-        VALUES (?, ?, ?, ?, ?)
-      `, [testUserId, SEED_IDS.activityTypes.exercicioFisico, 'Atividade 2', '2024-01-20', 5]);
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date)
+        VALUES (?, ?, ?, ?)
+      `, [testUserId, SEED_IDS.activityTypes.exercicioFisico, 'Atividade 2', '2024-01-20']);
 
       const entries = await getTimelineEntries(50, 0);
 
@@ -108,9 +108,9 @@ describe('Timeline Service', () => {
     test('deve respeitar o limite de entradas retornadas', async () => {
       for (let i = 1; i <= 5; i++) {
         db.run(`
-          INSERT INTO user_entries (user_id, activity_type_id, description, entry_date, points)
-          VALUES (?, ?, ?, ?, ?)
-        `, [testUserId, SEED_IDS.activityTypes.alimentacaoLimpa, `Atividade ${i}`, `2024-01-${10 + i}`, 10]);
+          INSERT INTO user_entries (user_id, activity_type_id, description, entry_date)
+          VALUES (?, ?, ?, ?)
+        `, [testUserId, SEED_IDS.activityTypes.alimentacaoLimpa, `Atividade ${i}`, `2024-01-${10 + i}`]);
       }
 
       const entries = await getTimelineEntries(3, 0);
@@ -124,9 +124,9 @@ describe('Timeline Service', () => {
     test('deve respeitar o offset para paginação', async () => {
       for (let i = 1; i <= 5; i++) {
         db.run(`
-          INSERT INTO user_entries (user_id, activity_type_id, description, entry_date, points)
-          VALUES (?, ?, ?, ?, ?)
-        `, [testUserId, SEED_IDS.activityTypes.alimentacaoLimpa, `Atividade ${i}`, `2024-01-${10 + i}`, 10]);
+          INSERT INTO user_entries (user_id, activity_type_id, description, entry_date)
+          VALUES (?, ?, ?, ?)
+        `, [testUserId, SEED_IDS.activityTypes.alimentacaoLimpa, `Atividade ${i}`, `2024-01-${10 + i}`]);
       }
 
       const entriesPage1 = await getTimelineEntries(2, 0);
@@ -146,19 +146,19 @@ describe('Timeline Service', () => {
       const oldDate = '2024-01-01';
 
       db.run(`
-        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date, points)
-        VALUES (?, ?, ?, ?, ?)
-      `, [testUserId, SEED_IDS.activityTypes.alimentacaoLimpa, 'Hoje', today, 10]);
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date)
+        VALUES (?, ?, ?, ?)
+      `, [testUserId, SEED_IDS.activityTypes.alimentacaoLimpa, 'Hoje', today]);
 
       db.run(`
-        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date, points)
-        VALUES (?, ?, ?, ?, ?)
-      `, [testUserId, SEED_IDS.activityTypes.alimentacaoLimpa, 'Ontem', yesterday, 10]);
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date)
+        VALUES (?, ?, ?, ?)
+      `, [testUserId, SEED_IDS.activityTypes.alimentacaoLimpa, 'Ontem', yesterday]);
 
       db.run(`
-        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date, points)
-        VALUES (?, ?, ?, ?, ?)
-      `, [testUserId, SEED_IDS.activityTypes.alimentacaoLimpa, 'Antigo', oldDate, 10]);
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date)
+        VALUES (?, ?, ?, ?)
+      `, [testUserId, SEED_IDS.activityTypes.alimentacaoLimpa, 'Antigo', oldDate]);
 
       const entries = await getTimelineEntries(50, 0, 2);
 
@@ -170,14 +170,14 @@ describe('Timeline Service', () => {
 
     test('deve excluir entradas invalidadas (is_invalidated = 1)', async () => {
       db.run(`
-        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date, points, is_invalidated)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `, [testUserId, SEED_IDS.activityTypes.alimentacaoLimpa, 'Entrada válida', '2024-01-15', 10, 0]);
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date, is_invalidated)
+        VALUES (?, ?, ?, ?, ?)
+      `, [testUserId, SEED_IDS.activityTypes.alimentacaoLimpa, 'Entrada válida', '2024-01-15', 0]);
 
       db.run(`
-        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date, points, is_invalidated)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `, [testUserId, SEED_IDS.activityTypes.alimentacaoLimpa, 'Entrada invalidada', '2024-01-15', 10, 1]);
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date, is_invalidated)
+        VALUES (?, ?, ?, ?, ?)
+      `, [testUserId, SEED_IDS.activityTypes.alimentacaoLimpa, 'Entrada invalidada', '2024-01-15', 1]);
 
       const entries = await getTimelineEntries(50, 0);
 
@@ -192,14 +192,14 @@ describe('Timeline Service', () => {
         [deletedUserId, 'user_deleted_test', 'hash123', new Date().toISOString()]);
 
       db.run(`
-        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date, points)
-        VALUES (?, ?, ?, ?, ?)
-      `, [deletedUserId, SEED_IDS.activityTypes.alimentacaoLimpa, 'Entrada de usuário deletado', '2024-01-15', 10]);
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date)
+        VALUES (?, ?, ?, ?)
+      `, [deletedUserId, SEED_IDS.activityTypes.alimentacaoLimpa, 'Entrada de usuário deletado', '2024-01-15']);
 
       db.run(`
-        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date, points)
-        VALUES (?, ?, ?, ?, ?)
-      `, [testUserId, SEED_IDS.activityTypes.alimentacaoLimpa, 'Entrada válida', '2024-01-15', 10]);
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date)
+        VALUES (?, ?, ?, ?)
+      `, [testUserId, SEED_IDS.activityTypes.alimentacaoLimpa, 'Entrada válida', '2024-01-15']);
 
       const entries = await getTimelineEntries(50, 0);
 
@@ -209,9 +209,9 @@ describe('Timeline Service', () => {
 
     test('deve retornar campos null corretos para atividades', async () => {
       db.run(`
-        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date, points)
-        VALUES (?, ?, ?, ?, ?)
-      `, [testUserId, SEED_IDS.activityTypes.alimentacaoLimpa, 'Teste', '2024-01-15', 10]);
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date)
+        VALUES (?, ?, ?, ?)
+      `, [testUserId, SEED_IDS.activityTypes.alimentacaoLimpa, 'Teste', '2024-01-15']);
 
       const entries = await getTimelineEntries(50, 0);
 
@@ -252,9 +252,9 @@ describe('Timeline Service', () => {
 
     test('deve normalizar created_at para UTC', async () => {
       db.run(`
-        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date, points)
-        VALUES (?, ?, ?, ?, ?)
-      `, [testUserId, SEED_IDS.activityTypes.alimentacaoLimpa, 'Teste', '2024-01-15', 10]);
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date)
+        VALUES (?, ?, ?, ?)
+      `, [testUserId, SEED_IDS.activityTypes.alimentacaoLimpa, 'Teste', '2024-01-15']);
 
       const entries = await getTimelineEntries(50, 0);
 
@@ -266,9 +266,9 @@ describe('Timeline Service', () => {
     test('deve contar todas as entradas disponíveis', async () => {
       for (let i = 1; i <= 3; i++) {
         db.run(`
-          INSERT INTO user_entries (user_id, activity_type_id, description, entry_date, points)
-          VALUES (?, ?, ?, ?, ?)
-        `, [testUserId, SEED_IDS.activityTypes.alimentacaoLimpa, `Atividade ${i}`, `2024-01-${10 + i}`, 10]);
+          INSERT INTO user_entries (user_id, activity_type_id, description, entry_date)
+          VALUES (?, ?, ?, ?)
+        `, [testUserId, SEED_IDS.activityTypes.alimentacaoLimpa, `Atividade ${i}`, `2024-01-${10 + i}`]);
       }
 
       db.run(`
@@ -291,14 +291,14 @@ describe('Timeline Service', () => {
       const oldDate = '2024-01-01';
 
       db.run(`
-        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date, points)
-        VALUES (?, ?, ?, ?, ?)
-      `, [testUserId, SEED_IDS.activityTypes.alimentacaoLimpa, 'Recente', today, 10]);
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date)
+        VALUES (?, ?, ?, ?)
+      `, [testUserId, SEED_IDS.activityTypes.alimentacaoLimpa, 'Recente', today]);
 
       db.run(`
-        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date, points)
-        VALUES (?, ?, ?, ?, ?)
-      `, [testUserId, SEED_IDS.activityTypes.alimentacaoLimpa, 'Antigo', oldDate, 10]);
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date)
+        VALUES (?, ?, ?, ?)
+      `, [testUserId, SEED_IDS.activityTypes.alimentacaoLimpa, 'Antigo', oldDate]);
 
       const count = await getTimelineEntriesCount(7);
 
@@ -307,14 +307,14 @@ describe('Timeline Service', () => {
 
     test('deve excluir entradas invalidadas da contagem', async () => {
       db.run(`
-        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date, points, is_invalidated)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `, [testUserId, SEED_IDS.activityTypes.alimentacaoLimpa, 'Válida', '2024-01-15', 10, 0]);
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date, is_invalidated)
+        VALUES (?, ?, ?, ?, ?)
+      `, [testUserId, SEED_IDS.activityTypes.alimentacaoLimpa, 'Válida', '2024-01-15', 0]);
 
       db.run(`
-        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date, points, is_invalidated)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `, [testUserId, SEED_IDS.activityTypes.alimentacaoLimpa, 'Invalidada', '2024-01-15', 10, 1]);
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date, is_invalidated)
+        VALUES (?, ?, ?, ?, ?)
+      `, [testUserId, SEED_IDS.activityTypes.alimentacaoLimpa, 'Invalidada', '2024-01-15', 1]);
 
       const count = await getTimelineEntriesCount();
 
@@ -327,14 +327,14 @@ describe('Timeline Service', () => {
         [deletedUserId, 'user_deleted_count_test', 'hash123', new Date().toISOString()]);
 
       db.run(`
-        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date, points)
-        VALUES (?, ?, ?, ?, ?)
-      `, [deletedUserId, SEED_IDS.activityTypes.alimentacaoLimpa, 'Entrada deletada', '2024-01-15', 10]);
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date)
+        VALUES (?, ?, ?, ?)
+      `, [deletedUserId, SEED_IDS.activityTypes.alimentacaoLimpa, 'Entrada deletada', '2024-01-15']);
 
       db.run(`
-        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date, points)
-        VALUES (?, ?, ?, ?, ?)
-      `, [testUserId, SEED_IDS.activityTypes.alimentacaoLimpa, 'Entrada válida', '2024-01-15', 10]);
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date)
+        VALUES (?, ?, ?, ?)
+      `, [testUserId, SEED_IDS.activityTypes.alimentacaoLimpa, 'Entrada válida', '2024-01-15']);
 
       const count = await getTimelineEntriesCount();
 

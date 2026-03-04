@@ -1,4 +1,5 @@
 import { getDb } from '../db-provider';
+import { CategoryId, CATEGORY_DAILY_CAPS } from '../utils/category.enum';
 
 export interface TimelineEntry {
   id: number;
@@ -12,7 +13,7 @@ export interface TimelineEntry {
   photo_url: string | null;
   photo_identifier: string | null;
   photo_original_name: string | null;
-  points: number;
+  points: number; // pontos calculados dinamicamente
   entry_date: string;
   created_at: string;
   is_invalidated: boolean;
@@ -34,6 +35,36 @@ function toUTCDate(dateStr: string | null): string | null {
 }
 
 /**
+ * Calcula pontos para uma entrada específica baseado na categoria e teto diário
+ * Nota: Este é um cálculo simplificado para exibição na timeline
+ * O cálculo correto do leaderboard considera todas as entradas do dia
+ */
+function calculateEntryPointsForDisplay(
+  categoryId: number | null,
+  basePoints: number | null,
+  isPositive: boolean | null
+): number {
+  if (categoryId === null || basePoints === null) return 0;
+  
+  // Para exibição na timeline, usamos os pontos base da atividade
+  // O cálculo com tetos diários é feito no leaderboard
+  if (categoryId === CategoryId.EXERCICIO) {
+    return 5;
+  }
+  if (categoryId === CategoryId.ENTORPECENTES) {
+    return -5;
+  }
+  if (categoryId === CategoryId.REFEICAO) {
+    return isPositive ? 10 : -10;
+  }
+  if (categoryId === CategoryId.PROJETO_PESSOAL) {
+    return 0; // Projetos são calculados semanalmente
+  }
+  
+  return basePoints;
+}
+
+/**
  * Busca entradas para a timeline (feed de atividades)
  * Retorna atividades e logs de projetos, ordenadas por data (mais recente primeiro)
  *
@@ -47,7 +78,7 @@ export async function getTimelineEntries(
   days?: number
 ): Promise<TimelineEntry[]> {
   // Filtro de data usando parâmetro vinculado
-  const dateCondition = days 
+  const dateCondition = days
     ? "AND substr(entry_date, 1, 10) >= date('now', '-' || ? || ' days')"
     : '';
 
@@ -66,7 +97,8 @@ export async function getTimelineEntries(
         e.photo_url,
         e.photo_identifier,
         e.photo_original_name,
-        e.points,
+        at.base_points,
+        at.is_positive,
         e.entry_date,
         e.created_at,
         e.is_invalidated,
@@ -98,7 +130,8 @@ export async function getTimelineEntries(
         NULL as photo_url,
         NULL as photo_identifier,
         NULL as photo_original_name,
-        0 as points,
+        0 as base_points,
+        0 as is_positive,
         l.date as entry_date,
         l.created_at,
         0 as is_invalidated,
@@ -119,12 +152,16 @@ export async function getTimelineEntries(
   `);
 
   const params: any[] = days ? [days, days, limit, offset] : [limit, offset];
-  const entries = stmt.all(...params) as TimelineEntry[];
+  const entries = stmt.all(...params) as Array<TimelineEntry & { base_points: number | null; is_positive: boolean | null }>;
 
-  // Normaliza datas para UTC
+  // Calcula pontos dinamicamente e normaliza datas
   return entries.map(e => ({
     ...e,
+    points: calculateEntryPointsForDisplay(e.category_id, e.base_points, e.is_positive),
     created_at: toUTCDate(e.created_at)!,
+    // Remove campos temporários
+    base_points: undefined as any,
+    is_positive: undefined as any,
   }));
 }
 

@@ -1,5 +1,6 @@
 import { getDb } from '../db-provider';
 import { calculatePointsFromActivityType } from './points.service';
+import { CategoryId } from '../utils/category.enum';
 
 export interface UserEntry {
   id: number;
@@ -20,6 +21,7 @@ export interface UserEntry {
   category_id?: number;
   category_name?: string;
   is_activity_validated?: boolean;
+  is_activity_positive?: boolean;
 }
 
 /**
@@ -210,7 +212,7 @@ export async function getUserEntriesWithDetails(userId: number): Promise<UserEnt
 /**
  * Busca entradas de um usuário para exibição pública (leaderboard)
  * Separa positivas e negativas, considera apenas activity_types validados
- * 
+ *
  * IMPORTANTE: Filtra por is_positive do activity_type, não por points da entrada
  */
 export async function getUserEntriesForLeaderboard(userId: number): Promise<{
@@ -224,10 +226,17 @@ export async function getUserEntriesForLeaderboard(userId: number): Promise<{
   const validatedEntries = entries.filter(e => e.is_activity_validated);
 
   // Filtra por is_positive do activity_type
-  // Exercícios (categoria 2) são sempre positivos
+  // Exercícios (categoria 2) e Entorpecentes (categoria 4) têm comportamento específico
   // Alimentação (categoria 1) pode ser positiva ou negativa
-  const positive = validatedEntries.filter(e => e.category_id === 2 || (e.category_id === 1 && e.is_activity_positive));
-  const negative = validatedEntries.filter(e => e.category_id === 1 && !e.is_activity_positive);
+  const positive = validatedEntries.filter(e =>
+    e.category_id === CategoryId.EXERCICIO ||
+    e.category_id === CategoryId.PROJETO_PESSOAL ||
+    (e.category_id === CategoryId.REFEICAO && e.is_activity_positive)
+  );
+  const negative = validatedEntries.filter(e =>
+    e.category_id === CategoryId.ENTORPECENTES ||
+    (e.category_id === CategoryId.REFEICAO && !e.is_activity_positive)
+  );
 
   return {
     positive,
@@ -237,18 +246,34 @@ export async function getUserEntriesForLeaderboard(userId: number): Promise<{
 }
 
 /**
- * Verifica se usuário já tem uma entrada de alimentação para uma determinada data
- * Retorna true se já existir entrada de alimentação (categoria 1) para o usuário na data
+ * Verifica se usuário já tem uma entrada para uma determinada categoria e data
+ * Retorna true se já existir entrada da categoria para o usuário na data
+ * 
+ * Regra: 1 entrada por categoria por dia
  */
-export async function hasUserFoodEntryForDate(userId: number, entryDate: string): Promise<boolean> {
+export async function hasUserEntryForCategoryDate(
+  userId: number,
+  entryDate: string,
+  categoryId: number
+): Promise<boolean> {
   const stmt = getDb().prepare(`
     SELECT COUNT(*) as count
     FROM user_entries e
     INNER JOIN activity_types at ON e.activity_type_id = at.id
-    WHERE e.user_id = ? AND e.entry_date = ? AND at.category_id = 1
+    WHERE e.user_id = ? AND e.entry_date = ? AND at.category_id = ?
   `);
-  const result = stmt.get(userId, entryDate) as { count: number };
+  const result = stmt.get(userId, entryDate, categoryId) as { count: number };
   return (result?.count ?? 0) > 0;
+}
+
+/**
+ * Verifica se usuário já tem uma entrada de alimentação para uma determinada data
+ * Retorna true se já existir entrada de alimentação (categoria 1) para o usuário na data
+ * 
+ * @deprecated Use hasUserEntryForCategoryDate diretamente
+ */
+export async function hasUserFoodEntryForDate(userId: number, entryDate: string): Promise<boolean> {
+  return hasUserEntryForCategoryDate(userId, entryDate, CategoryId.REFEICAO);
 }
 
 /**

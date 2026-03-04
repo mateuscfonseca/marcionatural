@@ -1,4 +1,5 @@
 import { getDb } from '../db-provider';
+import { CategoryId, CategoryDailyCaps } from '../utils/category.enum';
 
 export interface LeaderboardUser {
   id: number;
@@ -24,70 +25,90 @@ export interface LeaderboardSnapshot {
 }
 
 /**
+ * Calcula pontos diários de uma categoria específica com teto
+ */
+async function getDailyCategoryPointsUntilDate(
+  userId: number,
+  categoryId: number,
+  date: string
+): Promise<{ points: number; rawPoints: number; capped: boolean }> {
+  const stmt = getDb().prepare(`
+    SELECT COALESCE(SUM(at.base_points), 0) as total
+    FROM user_entries e
+    INNER JOIN activity_types at ON e.activity_type_id = at.id
+    WHERE e.user_id = ?
+      AND substr(e.entry_date, 1, 10) = ?
+      AND at.category_id = ?
+      AND at.is_validated = TRUE
+  `);
+  const result = stmt.get(userId, date, categoryId) as { total: number };
+  const rawPoints = result?.total ?? 0;
+
+  // Aplica teto baseado na categoria
+  const cap = CategoryDailyCaps[categoryId as CategoryId];
+  if (!cap) {
+    return { points: rawPoints, rawPoints, capped: false };
+  }
+
+  let points = rawPoints;
+  let capped = false;
+
+  if (rawPoints > cap.max) {
+    points = cap.max;
+    capped = true;
+  } else if (rawPoints < cap.min) {
+    points = cap.min;
+    capped = true;
+  }
+
+  return { points, rawPoints, capped };
+}
+
+/**
  * Calcula pontos totais de um usuário até uma data específica
  * Usa APENAS entry_date para filtrar (não created_at)
+ * Aplica tetos diários por categoria:
+ * - Alimentação: ±10 pontos por dia
+ * - Exercício: 5 pontos por dia (máx)
+ * - Entorpecentes: -5 pontos por dia (mín)
  */
 async function getUserTotalPointsUntilDate(
   userId: number,
   untilDate: string
 ): Promise<number> {
-  // Busca todas as datas únicas com entradas de alimentação até a data
-  const foodDatesStmt = getDb().prepare(`
-    SELECT DISTINCT substr(e.entry_date, 1, 10) as entry_date
+  // Busca todas as datas únicas com entradas por categoria até a data
+  const categoryDatesStmt = getDb().prepare(`
+    SELECT DISTINCT at.category_id, substr(e.entry_date, 1, 10) as entry_date
     FROM user_entries e
     INNER JOIN activity_types at ON e.activity_type_id = at.id
     WHERE e.user_id = ?
       AND e.entry_date IS NOT NULL
       AND substr(e.entry_date, 1, 10) <= ?
-      AND at.category_id = 1
       AND at.is_validated = TRUE
+      AND at.category_id IN (${CategoryId.REFEICAO}, ${CategoryId.EXERCICIO}, ${CategoryId.ENTORPECENTES})
   `);
-  const foodDates = foodDatesStmt.all(userId, untilDate) as Array<{ entry_date: string }>;
+  const categoryDates = categoryDatesStmt.all(userId, untilDate) as Array<{ category_id: number; entry_date: string }>;
 
-  let totalFoodPoints = 0;
-  const processedDates = new Set<string>();
-
-  // Calcula pontos de alimentação por dia com limite de 10
-  for (const dateRow of foodDates) {
-    const date = dateRow.entry_date;
-    if (!date || processedDates.has(date)) continue;
-    processedDates.add(date);
-
-    const stmt = getDb().prepare(`
-      SELECT COALESCE(SUM(at.base_points), 0) as total
-      FROM user_entries e
-      INNER JOIN activity_types at ON e.activity_type_id = at.id
-      WHERE e.user_id = ?
-        AND substr(e.entry_date, 1, 10) = ?
-        AND at.category_id = 1
-        AND at.is_validated = TRUE
-    `);
-    const result = stmt.get(userId, date) as { total: number };
-    const rawPoints = result?.total ?? 0;
-
-    // Aplica limite de 10 pontos (positivos ou negativos)
-    let points = rawPoints;
-    if (rawPoints > 10) points = 10;
-    else if (rawPoints < -10) points = -10;
-
-    totalFoodPoints += points;
+  // Agrupa datas por categoria
+  const datesByCategory = new Map<number, Set<string>>();
+  for (const { category_id, entry_date } of categoryDates) {
+    if (!datesByCategory.has(category_id)) {
+      datesByCategory.set(category_id, new Set());
+    }
+    datesByCategory.get(category_id)!.add(entry_date);
   }
 
-  // Soma pontos de exercícios até a data (5 pontos por entrada)
-  const exerciseStmt = getDb().prepare(`
-    SELECT COUNT(*) as count
-    FROM user_entries e
-    INNER JOIN activity_types at ON e.activity_type_id = at.id
-    WHERE e.user_id = ?
-      AND at.category_id = 2
-      AND at.is_validated = TRUE
-      AND substr(e.entry_date, 1, 10) <= ?
-  `);
-  const exerciseResult = exerciseStmt.get(userId, untilDate) as { count: number };
-  const exerciseCount = exerciseResult?.count ?? 0;
-  const exercisePoints = exerciseCount * 5;
+  let totalPoints = 0;
 
-  return totalFoodPoints + exercisePoints;
+  // Calcula pontos por categoria com teto diário
+  for (const [categoryId, dates] of datesByCategory.entries()) {
+    for (const date of dates) {
+      const dailyPoints = await getDailyCategoryPointsUntilDate(userId, categoryId, date);
+      totalPoints += dailyPoints.points;
+    }
+  }
+
+  return totalPoints;
 }
 
 /**

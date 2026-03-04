@@ -19,25 +19,26 @@ Aplicação de gamificação de hábitos com sistema de pontos automáticos, lea
 
 Os pontos são **automáticos** baseados no tipo de atividade:
 
-| Categoria | Tipo | Pontos |
-|-----------|------|--------|
-| Refeição | Limpa/Saudável | +10 |
-| Refeição | Suja/Não saudável | -10 |
-| Exercício | Qualquer exercício | +5 |
-| Projeto Pessoal | Meta semanal batida | +50 |
+| Categoria | Tipo | Pontos | Teto Diário |
+|-----------|------|--------|-------------|
+| Refeição | Limpa/Saudável | +10 | ±10 |
+| Refeição | Suja/Não saudável | -10 | ±10 |
+| Exercício | Qualquer exercício | +5 | 5 |
+| Entorpecentes | Usar Tabaco | -5 | -5 |
+| Projeto Pessoal | Meta semanal batida | +50 | 50/semana |
 
-### Regras de Negócio - Alimentação
+### Regras de Negócio
 
-#### Limite de 1 Entrada de Alimentação por Dia
+#### Limite de 1 Entrada por Categoria por Dia
 
-- **Apenas 1 registro de alimentação por dia civil**: O sistema permite apenas UMA entrada de alimentação (categoria 1) por dia
-- **Limite de ±10 pontos por dia**: O máximo de pontos de alimentação que você pode ganhar/perder por dia é +10 ou -10
+- **Apenas 1 registro por categoria por dia civil**: O sistema permite apenas UMA entrada de cada categoria por dia
+- **Tetos diários de pontos**: Cada categoria tem um teto máximo de pontos que pode ser ganho/perdido por dia
 - **Data de referência obrigatória**: Toda entrada deve informar o dia em que a atividade ocorreu (formato YYYY-MM-DD)
 - **Cadastro retroativo permitido**: Você pode registrar entradas de dias anteriores
 
 #### Por que essa regra?
 
-Esta regra beneficia quem mantém uma alimentação consistente ao longo do dia inteiro, em vez de acumular pontos com múltiplas refeições individuais.
+Esta regra beneficia quem mantém consistência ao longo do dia, em vez de acumular pontos com múltiplas entradas da mesma categoria.
 
 #### Exemplos Práticos
 
@@ -46,15 +47,21 @@ Esta regra beneficia quem mantém uma alimentação consistente ao longo do dia 
 | 1 refeição limpa no dia | +10 | ✅ Sim |
 | 1 refeição suja no dia | -10 | ✅ Sim |
 | Tentar 2ª refeição no mesmo dia | — | ❌ Bloqueado |
-| Exercícios no mesmo dia | +5 por exercício | ✅ Sim (ilimitado) |
+| 1 exercício no dia | +5 | ✅ Sim |
+| Tentar 2º exercício no mesmo dia | — | ❌ Bloqueado |
+| 1 registro de tabaco no dia | -5 | ✅ Sim |
+| Tentar 2º registro de tabaco no mesmo dia | — | ❌ Bloqueado |
+| 1 alimentação + 1 exercício no mesmo dia | +15 | ✅ Sim (categorias diferentes) |
 | Alimentação em dias diferentes | +10 por dia | ✅ Sim |
 
-#### Outras Categorias
+#### Tetos Diários por Categoria
 
-| Categoria | Regra | Pontos |
-|-----------|-------|--------|
-| **Exercícios** | Ilimitados por dia | +5 por entrada |
-| **Projetos Pessoais** | Meta semanal | +50 se bater meta |
+| Categoria | Teto Máximo | Teto Mínimo |
+|-----------|-------------|-------------|
+| **Alimentação** | +10 | -10 |
+| **Exercícios** | +5 | 0 |
+| **Entorpecentes** | 0 | -5 |
+| **Projetos Pessoais** | +50/semana | 0 |
 
 ### Validação Comunitária (Reports)
 

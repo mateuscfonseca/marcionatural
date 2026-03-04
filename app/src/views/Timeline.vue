@@ -79,7 +79,7 @@ function getCategoryIcon(entry: TimelineEntry): string {
   if (entry.entry_type === 'project') {
     return '📚';
   }
-  
+
   if (entry.category_id === 1) {
     // Alimentação
     return entry.points >= 0 ? '🥗' : '🍔';
@@ -89,6 +89,9 @@ function getCategoryIcon(entry: TimelineEntry): string {
   } else if (entry.category_id === 3) {
     // Projeto Pessoal
     return '📚';
+  } else if (entry.category_id === 4) {
+    // Entorpecentes
+    return '🚬';
   }
   return '📝';
 }
@@ -97,11 +100,12 @@ function getCategoryName(entry: TimelineEntry): string {
   if (entry.entry_type === 'project') {
     return 'Projeto Pessoal';
   }
-  
+
   const categories: Record<number, string> = {
     1: 'Alimentação',
     2: 'Exercício',
     3: 'Projeto Pessoal',
+    4: 'Entorpecentes',
   };
   return categories[entry.category_id || 0] || 'Atividade';
 }

@@ -78,10 +78,12 @@ const HISTORICAL_DATA: Record<string, Array<[number, string, string, number]>> =
     [3, 'Alimentação Limpa', 'Segunda-feira saudável', 10],
     [3, 'Exercício', 'Academia motivado', 5],
     [3, 'Exercício', 'Corrida', 5],
-    [2, 'Alimentação Limpa', 'Continuou bem', 10],
-    [2, 'Exercício', 'Treino', 5],
-    [1, 'Alimentação Suja', 'Começou a jacar', -10],
-    [0, 'Alimentação Suja', 'Desanimou da dieta', -10],
+    [2, 'Alimentação Suja', 'Terça exagerou', -10],
+    [2, 'Usar Tabaco', 'Voltou a fumar', -5],
+    [1, 'Alimentação Limpa', 'Quarta recuperou', 10],
+    [1, 'Exercício', 'Caminhada', 5],
+    [0, 'Alimentação Suja', 'Quinta recaiu', -10],
+    [0, 'Usar Tabaco', 'Fumou de novo', -5],
   ],
 };
 
@@ -156,8 +158,12 @@ async function createHistoricalEntries(userIds: Record<string, number>) {
         categoryId = 1;
         isPositive = false;
         basePoints = -10;
+      } else if (activityTypeName.includes('Usar Tabaco')) {
+        categoryId = 4; // entorpecentes
+        isPositive = false;
+        basePoints = -5;
       } else {
-        categoryId = 2;
+        categoryId = 2; // exercício
         isPositive = true;
         basePoints = 5;
       }
@@ -174,11 +180,11 @@ async function createHistoricalEntries(userIds: Record<string, number>) {
 
       const activityTypeId = activityTypeCache[activityTypeName];
 
-      // Cria entrada
+      // Cria entrada (sem points, cálculo é dinâmico)
       db.prepare(`
-        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date, points)
-        VALUES (?, ?, ?, ?, ?)
-      `).run(userId, activityTypeId, description, entryDate, expectedPoints);
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date)
+        VALUES (?, ?, ?, ?)
+      `).run(userId, activityTypeId, description, entryDate);
 
       console.log(`    - ${daysAgo === 0 ? 'Hoje' : `${daysAgo} dias atrás`}: ${activityTypeName} (${entryDate})`);
     }

@@ -91,7 +91,7 @@ describe('POST /entries - Validação 1 Alimentação por Dia', () => {
     }));
     expect(response2.status).toBe(409);
     const data = await response2.json() as { error: string };
-    expect(data.error).toContain('já registrou uma alimentação');
+    expect(data.error).toContain('já registrou uma entrada de alimentação');
   });
 
   test('deve permitir alimentação em dia diferente', async () => {
@@ -176,11 +176,11 @@ describe('POST /entries - Validação 1 Alimentação por Dia', () => {
     expect(response.status).toBe(400);
   });
 
-  test('deve permitir múltiplos exercícios no mesmo dia', async () => {
+  test('deve permitir apenas 1 exercício por dia (nova regra)', async () => {
     const app = new Hono();
     app.route('/api/entries', entriesRoutes);
 
-    // Exercício 1
+    // Exercício 1 - deve funcionar
     const response1 = await app.request('/api/entries', mockRequest({
       activityTypeId: SEED_IDS.activityTypes.exercicioFisico,
       description: 'Corrida manhã',
@@ -188,20 +188,14 @@ describe('POST /entries - Validação 1 Alimentação por Dia', () => {
     }));
     expect(response1.status).toBe(201);
 
-    // Exercício 2 no mesmo dia
+    // Exercício 2 no mesmo dia - deve falhar (409)
     const response2 = await app.request('/api/entries', mockRequest({
       activityTypeId: SEED_IDS.activityTypes.exercicioFisico,
       description: 'Musculação tarde',
       entryDate: '2025-03-03',
     }));
-    expect(response2.status).toBe(201);
-
-    // Exercício 3 no mesmo dia
-    const response3 = await app.request('/api/entries', mockRequest({
-      activityTypeId: SEED_IDS.activityTypes.exercicioFisico,
-      description: 'Natação noite',
-      entryDate: '2025-03-03',
-    }));
-    expect(response3.status).toBe(201);
+    expect(response2.status).toBe(409);
+    const data = await response2.json() as { error: string };
+    expect(data.error).toContain('já registrou uma entrada de exercício');
   });
 });
