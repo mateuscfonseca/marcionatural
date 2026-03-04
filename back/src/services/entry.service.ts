@@ -1,5 +1,4 @@
 import { getDb } from '../db-provider';
-import { calculatePointsFromActivityType } from './points.service';
 import { CategoryId } from '../utils/category.enum';
 
 export interface UserEntry {
@@ -11,7 +10,6 @@ export interface UserEntry {
   photo_original_name: string | null;
   photo_identifier: string | null;
   duration_minutes: number | null;
-  points: number;
   entry_date: string | null;
   is_invalidated: boolean;
   invalidated_at: string | null;
@@ -63,10 +61,24 @@ export interface UpdateEntryDTO {
   entryDate?: string;
 }
 
+/**
+ * Busca entrada por ID listando colunas explicitamente (sem points)
+ */
 export async function getEntryById(id: number): Promise<UserEntry | undefined> {
   const stmt = getDb().prepare(`
     SELECT
-      e.*,
+      e.id,
+      e.user_id,
+      e.activity_type_id,
+      e.description,
+      e.photo_url,
+      e.photo_original_name,
+      e.photo_identifier,
+      e.duration_minutes,
+      e.entry_date,
+      e.is_invalidated,
+      e.invalidated_at,
+      e.created_at,
       at.name as activity_type_name,
       at.category_id,
       at.is_positive as is_activity_positive,
@@ -86,10 +98,24 @@ export async function getEntryById(id: number): Promise<UserEntry | undefined> {
   };
 }
 
+/**
+ * Busca entradas por usuário listando colunas explicitamente (sem points)
+ */
 export async function getEntriesByUser(userId: number): Promise<UserEntry[]> {
   const stmt = getDb().prepare(`
     SELECT
-      e.*,
+      e.id,
+      e.user_id,
+      e.activity_type_id,
+      e.description,
+      e.photo_url,
+      e.photo_original_name,
+      e.photo_identifier,
+      e.duration_minutes,
+      e.entry_date,
+      e.is_invalidated,
+      e.invalidated_at,
+      e.created_at,
       at.name as activity_type_name,
       at.category_id,
       at.is_positive as is_activity_positive,
@@ -105,10 +131,24 @@ export async function getEntriesByUser(userId: number): Promise<UserEntry[]> {
   return normalizeEntries(entries);
 }
 
+/**
+ * Busca todas as entradas listando colunas explicitamente (sem points)
+ */
 export async function getAllEntries(): Promise<UserEntry[]> {
   const stmt = getDb().prepare(`
     SELECT
-      e.*,
+      e.id,
+      e.user_id,
+      e.activity_type_id,
+      e.description,
+      e.photo_url,
+      e.photo_original_name,
+      e.photo_identifier,
+      e.duration_minutes,
+      e.entry_date,
+      e.is_invalidated,
+      e.invalidated_at,
+      e.created_at,
       at.name as activity_type_name,
       at.category_id,
       at.is_positive as is_activity_positive,
@@ -123,13 +163,13 @@ export async function getAllEntries(): Promise<UserEntry[]> {
   return normalizeEntries(entries);
 }
 
+/**
+ * Cria entrada SEM coluna points (pontos são calculados dinamicamente)
+ */
 export async function createEntry(dto: CreateEntryDTO): Promise<UserEntry> {
-  // Calcula pontos baseado no activity_type
-  const points = await calculatePointsFromActivityType(dto.activityTypeId);
-
   const stmt = getDb().prepare(`
-    INSERT INTO user_entries (user_id, activity_type_id, description, photo_url, photo_identifier, photo_original_name, duration_minutes, points, entry_date)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO user_entries (user_id, activity_type_id, description, photo_url, photo_identifier, photo_original_name, duration_minutes, entry_date)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   const result = stmt.run(
@@ -140,13 +180,15 @@ export async function createEntry(dto: CreateEntryDTO): Promise<UserEntry> {
     dto.photoIdentifier ?? null,
     dto.photoOriginalName ?? null,
     dto.durationMinutes ?? null,
-    points,
     dto.entryDate ?? null
   );
 
   return getEntryById(result.lastInsertRowid as number) as Promise<UserEntry>;
 }
 
+/**
+ * Atualiza entrada (sem points)
+ */
 export async function updateEntry(id: number, dto: UpdateEntryDTO): Promise<UserEntry | undefined> {
   const entry = await getEntryById(id);
   if (!entry) return undefined;
@@ -190,10 +232,24 @@ export async function deleteEntry(id: number): Promise<boolean> {
   return result.changes > 0;
 }
 
+/**
+ * Busca entradas do usuário listando colunas explicitamente (sem points)
+ */
 export async function getUserEntriesWithDetails(userId: number): Promise<UserEntry[]> {
   const stmt = getDb().prepare(`
     SELECT
-      e.*,
+      e.id,
+      e.user_id,
+      e.activity_type_id,
+      e.description,
+      e.photo_url,
+      e.photo_original_name,
+      e.photo_identifier,
+      e.duration_minutes,
+      e.entry_date,
+      e.is_invalidated,
+      e.invalidated_at,
+      e.created_at,
       at.name as activity_type_name,
       at.category_id,
       at.is_positive as is_activity_positive,
@@ -248,7 +304,7 @@ export async function getUserEntriesForLeaderboard(userId: number): Promise<{
 /**
  * Verifica se usuário já tem uma entrada para uma determinada categoria e data
  * Retorna true se já existir entrada da categoria para o usuário na data
- * 
+ *
  * Regra: 1 entrada por categoria por dia
  */
 export async function hasUserEntryForCategoryDate(
@@ -269,7 +325,7 @@ export async function hasUserEntryForCategoryDate(
 /**
  * Verifica se usuário já tem uma entrada de alimentação para uma determinada data
  * Retorna true se já existir entrada de alimentação (categoria 1) para o usuário na data
- * 
+ *
  * @deprecated Use hasUserEntryForCategoryDate diretamente
  */
 export async function hasUserFoodEntryForDate(userId: number, entryDate: string): Promise<boolean> {
@@ -277,12 +333,23 @@ export async function hasUserFoodEntryForDate(userId: number, entryDate: string)
 }
 
 /**
- * Busca entrada de um usuário para uma data específica
+ * Busca entrada de um usuário para uma data específica listando colunas explicitamente
  */
 export async function getUserEntryForDate(userId: number, entryDate: string): Promise<UserEntry | undefined> {
   const stmt = getDb().prepare(`
     SELECT
-      e.*,
+      e.id,
+      e.user_id,
+      e.activity_type_id,
+      e.description,
+      e.photo_url,
+      e.photo_original_name,
+      e.photo_identifier,
+      e.duration_minutes,
+      e.entry_date,
+      e.is_invalidated,
+      e.invalidated_at,
+      e.created_at,
       at.name as activity_type_name,
       at.category_id,
       c.name as category_name,

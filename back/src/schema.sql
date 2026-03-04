@@ -60,7 +60,6 @@ CREATE TABLE IF NOT EXISTS user_entries (
     photo_original_name TEXT,
     photo_identifier TEXT UNIQUE,
     duration_minutes INTEGER,
-    points INTEGER NOT NULL DEFAULT 0,
     entry_date DATE,
     is_invalidated BOOLEAN DEFAULT FALSE,
     invalidated_at DATETIME,

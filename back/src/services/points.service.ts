@@ -140,15 +140,12 @@ export async function getUserEntriesCount(userId: number): Promise<number> {
 
 /**
  * Recalcula pontos de todas as entradas de um usuário quando um activity_type é invalidado
+ * NOTA: Como os pontos são calculados dinamicamente, não precisamos mais atualizar a coluna points
+ * Esta função é mantida para compatibilidade mas não faz nada
  */
 export async function recalculateUserPointsAfterInvalidation(activityTypeId: number): Promise<void> {
-  // Zera pontos de entradas com este activity_type
-  const stmt = getDb().prepare(`
-    UPDATE user_entries
-    SET points = 0
-    WHERE activity_type_id = ?
-  `);
-  stmt.run(activityTypeId);
+  // Não faz nada - pontos são calculados dinamicamente na leitura
+  // A invalidação é tratada pelo filtro is_validated do activity_type
 }
 
 /**
