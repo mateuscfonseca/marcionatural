@@ -14,7 +14,9 @@ import {
 } from './test-helpers';
 
 /**
- * Realiza login com logs e screenshots
+ * Realiza login com logs
+ *
+ * Screenshot de sucesso só é salvo se SAVE_SUCCESS_SCREENSHOTS=true
  */
 export async function loginWithLog(
   page: Page,
@@ -23,18 +25,21 @@ export async function loginWithLog(
   password: string = 'teste123'
 ): Promise<void> {
   await logStep(testInfo, 'Realizando login', '🔐');
-  
+
   await navigateWithLog(page, testInfo, '/login', 'Página de Login');
   await fillWithLog(page, testInfo, '[data-testid="username-input"]', username, 'Username');
   await fillWithLog(page, testInfo, '[data-testid="password-input"]', password, 'Password');
   await clickWithLog(page, testInfo, '[data-testid="login-button"]', 'Botão Login');
   await page.waitForURL(/\/leaderboard/);
-  
+
+  // Screenshot opcional de sucesso (controlado por SAVE_SUCCESS_SCREENSHOTS)
   await takeScreenshot(page, testInfo, { label: 'login-success', type: 'success' });
 }
 
 /**
  * Realiza logout com logs
+ *
+ * Screenshot de sucesso só é salvo se SAVE_SUCCESS_SCREENSHOTS=true
  */
 export async function logoutWithLog(
   page: Page,
@@ -43,6 +48,7 @@ export async function logoutWithLog(
   await logStep(testInfo, 'Realizando logout', '🚪');
   await clickWithLog(page, testInfo, '[data-testid="logout-button"]', 'Botão Logout');
   await page.waitForURL('/login');
+  // Screenshot opcional de sucesso (controlado por SAVE_SUCCESS_SCREENSHOTS)
   await takeScreenshot(page, testInfo, { label: 'logout-success', type: 'success' });
 }
 

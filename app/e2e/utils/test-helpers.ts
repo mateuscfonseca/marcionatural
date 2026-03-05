@@ -1,6 +1,6 @@
 /**
  * Utilities para testes E2E
- * 
+ *
  * Fornece funções para screenshots organizadas, logs detalhados
  * e helpers para debug de testes
  */
@@ -8,6 +8,14 @@
 import { Page, TestInfo } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
+
+/**
+ * Controle de screenshots de sucesso
+ *
+ * Por padrão, screenshots de sucesso NÃO são salvas para economizar espaço.
+ * Para habilitar: SAVE_SUCCESS_SCREENSHOTS=true bun run e2e
+ */
+const SAVE_SUCCESS_SCREENSHOTS = process.env.SAVE_SUCCESS_SCREENSHOTS === 'true';
 
 /**
  * Cores para logs no console
@@ -68,7 +76,7 @@ export interface ScreenshotOptions {
 
 /**
  * Tira screenshot e salva em múltiplas localizações
- * 
+ *
  * @param page - Página do Playwright
  * @param testInfo - Informações do teste
  * @param options - Opções do screenshot
@@ -79,34 +87,42 @@ export async function takeScreenshot(
   options: ScreenshotOptions
 ): Promise<string> {
   const { label, type = 'step', fullPage = true, skipSave = false } = options;
-  
+
+  // Pula screenshot de sucesso se SAVE_SUCCESS_SCREENSHOTS for false
+  if (type === 'success' && !SAVE_SUCCESS_SCREENSHOTS && !skipSave) {
+    console.log(
+      `${colors.dim}⏭️ [SKIP]${colors.reset} ${label} ${colors.dim}(success screenshots desativados)${colors.reset}`
+    );
+    return '';
+  }
+
   const timestamp = formatTimestamp();
   const fileName = `${label}-${timestamp}.png`;
-  
+
   // Caminhos
   const outputDir = testInfo.outputDir;
   const screenshotsDir = path.join(process.cwd(), 'e2e', 'screenshots');
   const typeDir = type === 'error' ? 'error' : 'success';
-  
+
   // Garante diretórios
   ensureDir(outputDir);
   ensureDir(path.join(screenshotsDir, typeDir));
-  
+
   // Tira o screenshot
   const screenshotBuffer = await page.screenshot({
     fullPage,
     type: 'png',
   });
-  
+
   if (!skipSave) {
     // Salva no diretório do teste
     const testResultPath = path.join(outputDir, fileName);
     fs.writeFileSync(testResultPath, screenshotBuffer);
-    
+
     // Salva no diretório organizado por tipo
     const organizedPath = path.join(screenshotsDir, typeDir, fileName);
     fs.writeFileSync(organizedPath, screenshotBuffer);
-    
+
     // Log
     console.log(
       `${colors.cyan}📸 [${type.toUpperCase()}]${colors.reset} ${label}`
@@ -122,7 +138,7 @@ export async function takeScreenshot(
       `${colors.cyan}📸 [${type.toUpperCase()}]${colors.reset} ${label} ${colors.dim}(não salvo)${colors.reset}`
     );
   }
-  
+
   return fileName;
 }
 

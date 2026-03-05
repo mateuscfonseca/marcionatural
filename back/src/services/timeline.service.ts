@@ -89,9 +89,10 @@ export async function getTimelineEntries(
   offset: number = 0,
   days?: number
 ): Promise<TimelineEntry[]> {
-  // Filtro de data usando parâmetro vinculado
+  // Filtro de data usando created_at (quando o registro foi criado)
+  // Isso permite filtrar entradas recentes na timeline
   const dateCondition = days
-    ? "AND substr(entry_date, 1, 10) >= date('now', '-' || ? || ' days')"
+    ? "AND datetime(created_at) >= datetime('now', '-' || ? || ' days')"
     : '';
 
   // UNION ALL de atividades e logs de projetos
@@ -182,7 +183,7 @@ export async function getTimelineEntries(
  */
 export async function getTimelineEntriesCount(days?: number): Promise<number> {
   const dateCondition = days
-    ? "AND substr(entry_date, 1, 10) >= date('now', '-' || ? || ' days')"
+    ? "AND datetime(created_at) >= datetime('now', '-' || ? || ' days')"
     : '';
 
   const stmt = getDb().prepare(`

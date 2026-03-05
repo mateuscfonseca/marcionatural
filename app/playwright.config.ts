@@ -47,11 +47,9 @@ export default defineConfig({
     // Para produção (Docker), use BASE_URL=http://localhost:9000
     baseURL: process.env.BASE_URL || 'http://localhost:5173',
 
-    // Screenshot em TODOS os testes
-    screenshot: {
-      mode: 'on',
-      fullPage: true,
-    },
+    // Screenshot apenas em caso de erro (controlado via test-helpers.ts)
+    // Para habilitar screenshots de sucesso: SAVE_SUCCESS_SCREENSHOTS=true bun run e2e
+    screenshot: 'only-on-failure',
 
     // Vídeo de TODOS os testes
     video: {
