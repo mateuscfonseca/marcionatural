@@ -1,27 +1,12 @@
 $ bun run --watch src/index.ts
 Banco de dados inicializado com sucesso!
 🔄 Verificando migrações pendentes...
-🔧 [001-add-entry-date] Aplicando: Adiciona coluna entry_date e índices na tabela user_entries...
-  ℹ️  Coluna entry_date já existe
-  ✅ Índice idx_user_entries_entry_date verificado
-  ✅ Índice idx_user_entries_user_date verificado
-✅ [001-add-entry-date] Aplicada com sucesso!
-🔧 [002-add-user-deleted-at] Aplicando: Adiciona coluna deleted_at para exclusão lógica na tabela users...
-  ✅ Coluna deleted_at adicionada
-  ✅ Índice idx_users_deleted_at verificado
-✅ [002-add-user-deleted-at] Aplicada com sucesso!
-🔧 [003-fix-null-entry-date] Aplicando: Corrige entradas com entry_date NULL usando created_at como referência...
-  ℹ️  Nenhuma entrada com entry_date NULL encontrada
-✅ [003-fix-null-entry-date] Aplicada com sucesso!
-🔧 [004-add-entorpecentes-category] Aplicando: Adiciona categoria entorpecentes e atividade Usar Tabaco...
-  ℹ️  Categoria entorpecentes já existe
-  ℹ️  Atividade Usar Tabaco já existe
-✅ [004-add-entorpecentes-category] Aplicada com sucesso!
-🔧 [005-drop-points-column] Aplicando: Remove coluna points desatualizada de user_entries...
-  ℹ️  Coluna points já foi removida
-✅ [005-drop-points-column] Aplicada com sucesso!
-📊 Resumo: 5 aplicada(s), 0 pulada(s), 5 total
-🎉 Migrações concluídas com sucesso!
+⏭️  [001-add-entry-date] Já aplicada - Adiciona coluna entry_date e índices na tabela user_entries
+⏭️  [002-add-user-deleted-at] Já aplicada - Adiciona coluna deleted_at para exclusão lógica na tabela users
+⏭️  [003-fix-null-entry-date] Já aplicada - Corrige entradas com entry_date NULL usando created_at como referência
+⏭️  [004-add-entorpecentes-category] Já aplicada - Adiciona categoria entorpecentes e atividade Usar Tabaco
+⏭️  [005-drop-points-column] Já aplicada - Remove coluna points desatualizada de user_entries
+📊 Resumo: 0 aplicada(s), 5 pulada(s), 5 total
 🚀 Servidor rodando em http://localhost:3000
 20 | } else if (typeof entryNamespace?.default?.fetch === 'function' || entryNamespace?.default?.app != undefined) {
 21 |    var server = globalThis[hmrSymbol];

@@ -37,7 +37,7 @@ export default defineConfig({
   reporter: [
     ['html', { outputFolder: './playwright-report', open: 'never' }],
     ['list'],
-    ['./custom-reporter.ts'],
+    ['./custom-reporter.ts'],  // Reporter customizado com logs detalhados
   ],
 
   // Shared settings for all the projects below

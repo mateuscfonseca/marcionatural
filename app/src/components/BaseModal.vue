@@ -55,7 +55,7 @@ const sizeClasses = {
       >
         <div
           :class="[
-            'bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full h-[100vh] sm:h-auto overflow-y-auto flex flex-col',
+            'bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full h-[100vh] sm:h-auto max-h-[90vh] overflow-y-auto flex flex-col',
             sizeClasses[size]
           ]"
         >
@@ -67,7 +67,7 @@ const sizeClasses = {
             <button
               v-if="showCloseButton"
               @click="closeModal"
-              class="text-gray-500 hover:text-gray-700 text-2xl cursor-pointer"
+              class="text-gray-500 hover:text-gray-700 text-2xl"
             >
               ×
             </button>
