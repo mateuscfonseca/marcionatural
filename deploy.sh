@@ -48,19 +48,15 @@ deploy() {
         exit 1
     fi
     
-    # Remove containers e imagens antigas para forçar rebuild limpo
-    log_info "Parando containers..."
-    sudo docker compose down --remove-orphans
-    
-    log_info "Build do frontend..."
+    log_info "Build do frontend (com containers antigos rodando)..."
     sudo docker compose build --no-cache frontend
-    
-    log_info "Build do backend..."
+
+    log_info "Build do backend (com containers antigos rodando)..."
     sudo docker compose build --no-cache backend
-    
-    log_info "Subindo serviços..."
+
+    log_info "Subindo serviços com novas imagens..."
     sudo docker compose up -d
-    
+
     log_info "Verificando status dos containers..."
     sudo docker compose ps
     
