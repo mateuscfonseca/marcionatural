@@ -19,6 +19,7 @@ async function handleLogout() {
       <div class="flex items-center gap-4">
         <!-- Botão Hamburger (mobile) -->
         <button
+          data-testid="menu-button"
           @click="toggle"
           class="lg:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
           aria-label="Abrir menu"
@@ -37,6 +38,7 @@ async function handleLogout() {
       </div>
 
       <button
+        data-testid="logout-button"
         @click="handleLogout"
         class="px-3 sm:px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors flex items-center gap-2 text-sm sm:text-base cursor-pointer"
       >

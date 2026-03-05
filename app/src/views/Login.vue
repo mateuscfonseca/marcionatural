@@ -51,6 +51,7 @@ async function handleSubmit() {
             id="username"
             v-model="username"
             type="text"
+            data-testid="username-input"
             required
             minlength="3"
             autocomplete="username"
@@ -67,6 +68,7 @@ async function handleSubmit() {
             id="password"
             v-model="password"
             type="password"
+            data-testid="password-input"
             required
             minlength="6"
             autocomplete="current-password"
@@ -75,7 +77,7 @@ async function handleSubmit() {
           />
         </div>
 
-        <div v-if="error" class="bg-red-50 border border-red-200 text-red-700 px-5 py-4 rounded-xl text-base font-medium">
+        <div v-if="error" data-testid="login-error" class="bg-red-50 border border-red-200 text-red-700 px-5 py-4 rounded-xl text-base font-medium">
           {{ error }}
         </div>
 
@@ -88,6 +90,7 @@ async function handleSubmit() {
         <button
           type="submit"
           :disabled="loading"
+          data-testid="login-button"
           class="w-full py-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl font-semibold text-lg hover:from-green-700 hover:to-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:shadow hover:-translate-y-0.5 cursor-pointer"
         >
           {{ loading ? 'Entrando...' : 'Entrar' }}

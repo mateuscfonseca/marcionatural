@@ -511,14 +511,15 @@ describe('GET /entries/users/:userId - Paginação e Filtros Temporais', () => {
 
     const data = await response.json() as {
       user: { id: number; username: string };
-      positive: { entries: any[]; pagination: { total: number } };
-      negative: { entries: any[]; pagination: { total: number } };
-      all: any[];
+      entries: any[];
+      pagination: { page: number; limit: number; total: number; totalPages: number };
     };
 
     expect(data.user.username).toBe(testUsername);
-    expect(data.positive.entries).toHaveLength(6); // limit padrão
-    expect(data.positive.pagination.total).toBe(10);
+    expect(data.entries).toHaveLength(6); // limit padrão
+    expect(data.pagination.total).toBe(10);
+    expect(data.pagination.page).toBe(1);
+    expect(data.pagination.limit).toBe(6);
   });
 
   test('deve aplicar filtro temporal em entradas de usuário público', async () => {
@@ -535,11 +536,13 @@ describe('GET /entries/users/:userId - Paginação e Filtros Temporais', () => {
     expect(response.status).toBe(200);
 
     const data = await response.json() as {
-      positive: { entries: any[]; pagination: { total: number } };
+      user: { id: number; username: string };
+      entries: any[];
+      pagination: { page: number; limit: number; total: number; totalPages: number };
     };
 
-    expect(data.positive.entries).toHaveLength(1);
-    expect(data.positive.entries[0].description).toBe('Exercício recente');
-    expect(data.positive.pagination.total).toBe(1);
+    expect(data.entries).toHaveLength(1);
+    expect(data.entries[0].description).toBe('Exercício recente');
+    expect(data.pagination.total).toBe(1);
   });
 });

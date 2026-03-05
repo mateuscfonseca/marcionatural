@@ -28,6 +28,7 @@ const getToastClasses = (type: 'success' | 'error' | 'info') => {
         <div
           v-for="toast in toasts"
           :key="toast.id"
+          :data-testid="`toast-${toast.type}`"
           :class="getToastClasses(toast.type)"
         >
           <span class="text-xl">{{ getToastIcon(toast.type) }}</span>

@@ -9,6 +9,7 @@
     "migrate": "bun run src/run-migrations.ts",
     "migrate:legacy": "bun run src/migrate.ts",
     "seed-dev": "bun run src/scripts/seed-dev.ts",
+    "seed-e2e": "bun run src/scripts/seed-e2e.ts",
     "test": "bun test"
   },
   "dependencies": {

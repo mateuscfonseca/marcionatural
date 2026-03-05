@@ -26,6 +26,7 @@ const handleNavigation = () => {
 <template>
   <!-- Overlay para mobile -->
   <div
+    data-testid="sidebar-overlay"
     class="fixed inset-0 bg-black/30 backdrop-blur-sm z-40 lg:hidden"
     :class="isOpen ? 'block' : 'hidden'"
     @click="close"
@@ -33,6 +34,7 @@ const handleNavigation = () => {
 
   <!-- Sidebar -->
   <aside
+    data-testid="sidebar"
     class="fixed lg:static top-0 left-0 z-50 lg:z-auto w-64 bg-gray-800 text-white min-h-screen transform transition-transform duration-300 ease-in-out lg:transform-none"
     :class="isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
   >
@@ -57,6 +59,7 @@ const handleNavigation = () => {
           <li v-for="item in menuItems" :key="item.path">
             <router-link
               :to="item.path"
+              :data-testid="`nav-link-${item.path.replace('/', '')}`"
               @click="handleNavigation"
               class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors cursor-pointer"
               :class="isActive(item.path) ? 'bg-gray-700 text-green-400' : 'hover:bg-gray-700'"

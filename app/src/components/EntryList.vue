@@ -304,6 +304,7 @@ watch(() => props.entries, () => {
         <div
           v-for="entry in filteredEntries"
           :key="entry.id"
+          :data-testid="`entry-card-${entry.id}`"
           class="bg-white rounded-xl shadow-sm border p-4 cursor-pointer hover:shadow-md transition-shadow"
           :class="[
             !entry.is_activity_validated ? 'opacity-75 bg-gray-50' : '',

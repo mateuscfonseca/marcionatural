@@ -371,6 +371,208 @@ docker-compose up --build
 docker-compose down
 ```
 
+## 🧪 Testes E2E (End-to-End)
+
+O projeto utiliza **Playwright** para testes de interface automatizados, rodando em modo headless com Chromium.
+
+### Estrutura de Testes
+
+```
+e2e/
+├── tests/
+│   ├── auth.spec.ts          # Login, registro, logout, rotas protegidas
+│   ├── entries.spec.ts       # CRUD de entradas, upload, filtros, paginação
+│   ├── leaderboard.spec.ts   # Ranking, polling, pontos
+│   ├── users.spec.ts         # Lista de usuários, entradas de outros usuários
+│   ├── voting.spec.ts        # Reports, votação, entradas invalidadas
+│   ├── projects.spec.ts      # Projetos pessoais, registro de tempo
+│   ├── timeline.spec.ts      # Timeline, ordenação, filtros
+│   └── navigation.spec.ts    # Sidebar, menu, FAB, toast messages
+├── fixtures/
+│   └── test-fixtures.ts      # Fixtures reutilizáveis
+└── playwright.config.ts      # Configuração do Playwright
+```
+
+### Como Rodar os Testes
+
+#### 1. Preparar o Ambiente
+
+```bash
+# 1.1 Rodar backend com banco de testes
+cd back
+DATABASE_PATH=./data/test.db bun run dev
+
+# 1.2 Em outro terminal, rodar frontend
+cd app
+bun run dev
+
+# 1.3 Em outro terminal, rodar seed de testes
+cd back
+DATABASE_PATH=./data/test.db bun run seed-e2e
+```
+
+#### 2. Rodar Testes
+
+```bash
+# Todos os testes (headless)
+cd app
+bun run e2e
+
+# Interface interativa (recomendado para desenvolvimento)
+bun run e2e:ui
+
+# Browser visível (para debug)
+bun run e2e:headed
+
+# Debug passo-a-passo
+bun run e2e:debug
+
+# Ver relatório HTML
+bun run e2e:report
+```
+
+### Scripts Disponíveis
+
+| Script | Descrição |
+|--------|-----------|
+| `bun run e2e` | Roda todos os testes em modo headless |
+| `bun run e2e:ui` | Abre interface interativa do Playwright |
+| `bun run e2e:headed` | Roda testes com browser visível |
+| `bun run e2e:debug` | Debug passo-a-passo com inspector |
+| `bun run e2e:report` | Abre relatório HTML dos testes |
+
+### Credenciais de Teste
+
+O seed E2E cria os seguintes usuários:
+
+| Usuário | Senha | Descrição |
+|---------|-------|-----------|
+| `test_user_1` | `teste123` | Usuário padrão para testes |
+| `test_user_2` | `teste123` | Usuário com entradas reportáveis |
+| `test_user_3` | `teste123` | Usuário com poucas entradas |
+| `test_leader` | `teste123` | Líder do leaderboard (mais pontos) |
+| `test_reporter` | `teste123` | Usuário para testar reports |
+
+### Casos de Teste
+
+#### Autenticação (`auth.spec.ts`)
+- ✅ Login com credenciais válidas
+- ✅ Login com credenciais inválidas (mensagem de erro)
+- ✅ Logout
+- ✅ Registro de novo usuário
+- ✅ Validação de senha (mínimo 6 caracteres, confirmação)
+- ✅ Redirecionamento de rotas protegidas
+
+#### Entradas (`entries.spec.ts`)
+- ✅ Criar entrada via FAB
+- ✅ Upload de foto com preview
+- ✅ Validação: limite de 1 entrada por categoria/dia
+- ✅ Editar entrada existente
+- ✅ Excluir entrada com confirmação
+- ✅ Filtros por tipo (positivas/negativas/invalidadas)
+- ✅ Filtros por período (hoje, última semana, tudo)
+- ✅ Paginação (20+ entradas)
+- ✅ Modal de detalhes ao clicar no card
+
+#### Leaderboard (`leaderboard.spec.ts`)
+- ✅ Renderização do ranking
+- ✅ Polling automático (10s)
+- ✅ Navegação para entradas de usuário
+- ✅ Validação de pontos corretos
+- ✅ Layout responsivo (cards mobile, tabela desktop)
+
+#### Usuários (`users.spec.ts`)
+- ✅ Lista de todos os usuários
+- ✅ Navegação para entradas de outro usuário
+- ✅ Visualização de entradas com foto thumb
+- ✅ Modal de detalhes
+
+#### Votação (`voting.spec.ts`)
+- ✅ Reportar entrada de outro usuário
+- ✅ 3+ reports → entrada invalidada automaticamente
+- ✅ Abas: Para Votar, Invalidadas, Minhas Invalidadas
+- ✅ Estatísticas de votação
+- ✅ Remover report
+
+#### Projetos (`projects.spec.ts`)
+- ✅ Criar novo projeto
+- ✅ Editar projeto
+- ✅ Excluir projeto
+- ✅ Registrar tempo diário
+- ✅ Validar progresso semanal
+- ✅ Meta batida → +50 pontos
+
+#### Timeline (`timeline.spec.ts`)
+- ✅ Renderização cronológica
+- ✅ Entradas de todos os usuários
+- ✅ Filtros por período
+- ✅ Diferenciação visual (positivas/negativas)
+
+#### Navegação (`navigation.spec.ts`)
+- ✅ Sidebar abre/fecha (mobile)
+- ✅ Overlay fecha ao clicar
+- ✅ Navegação por todas as rotas
+- ✅ Botão flutuante (FAB) em todas as telas
+- ✅ Mensagens toast (sucesso/erro)
+- ✅ Header com nome do usuário e logout
+
+### Configuração
+
+O Playwright está configurado em `e2e/playwright.config.ts`:
+
+- **Base URL**: `http://localhost:9000` (produção) ou `http://localhost:5173` (dev)
+- **Browser**: Chromium
+- **Timeout**: 30s por teste
+- **Vídeo**: Gravado em caso de falha
+- **Screenshot**: Automático em falhas
+- **Relatório**: HTML em `e2e/playwright-report`
+
+### Workflow de Desenvolvimento
+
+1. **Backend rodando** com banco de testes:
+   ```bash
+   cd back
+   DATABASE_PATH=./data/test.db bun run dev
+   ```
+
+2. **Frontend rodando**:
+   ```bash
+   cd app
+   bun run dev
+   ```
+
+3. **Seed de testes** (sempre que reiniciar o banco):
+   ```bash
+   cd back
+   DATABASE_PATH=./data/test.db bun run seed-e2e
+   ```
+
+4. **Rodar testes**:
+   ```bash
+   cd app
+   bun run e2e:ui  # Interface interativa (recomendado)
+   ```
+
+### CI/CD (Futuro)
+
+Para integração contínua, os testes podem ser rodados automaticamente:
+
+```yaml
+# .github/workflows/e2e.yml
+- Rodar backend + frontend em background
+- Executar seed de testes
+- bun run e2e (headless)
+- Upload de relatório e vídeos em caso de falha
+```
+
+### Dicas
+
+- Use `bun run e2e:ui` para desenvolver testes interativamente
+- Use `bun run e2e:debug` para debug passo-a-passo
+- Screenshots e vídeos são salvos em `e2e/test-results/` em caso de falha
+- O relatório HTML é gerado em `e2e/playwright-report/`
+
+
 ## Variáveis de Ambiente
 
 Copie `.env.example` para `.env` e configure:

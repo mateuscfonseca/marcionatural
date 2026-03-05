@@ -1,5 +1,5 @@
 import type { Migration } from './Migration';
-import { db } from '../db';
+import type { Database } from 'bun:sqlite';
 
 /**
  * Migração 004: Adiciona categoria entorpecentes e atividade Usar Tabaco
@@ -14,11 +14,11 @@ export class AddEntorpecentesCategoryMigration implements Migration {
   readonly name = '004-add-entorpecentes-category';
   readonly description = 'Adiciona categoria entorpecentes e atividade Usar Tabaco';
 
-  apply(): void {
+  apply(db: Database): void {
     // Verifica se a categoria já existe
     const categoryStmt = db.prepare("SELECT COUNT(*) as count FROM categories WHERE id = 4");
     const categoryResult = categoryStmt.get() as { count: number };
-    
+
     if (categoryResult.count === 0) {
       db.run(`
         INSERT INTO categories (id, name, description)
@@ -32,7 +32,7 @@ export class AddEntorpecentesCategoryMigration implements Migration {
     // Verifica se a atividade já existe
     const activityStmt = db.prepare("SELECT COUNT(*) as count FROM activity_types WHERE id = 4");
     const activityResult = activityStmt.get() as { count: number };
-    
+
     if (activityResult.count === 0) {
       db.run(`
         INSERT INTO activity_types (id, name, category_id, is_positive, base_points, is_validated)

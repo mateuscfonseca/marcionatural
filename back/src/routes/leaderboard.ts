@@ -4,7 +4,7 @@ import { findUserById } from '../services/user.service';
 import { getUserEntriesForLeaderboard } from '../services/entry.service';
 import { getUserTotalPoints, getUserEntriesCount } from '../services/points.service';
 import { getLeaderboardWithMovement, getLeaderboardHistory, getLeaderboardByDate } from '../services/leaderboard.service';
-import { db } from '../db';
+import { getDb } from '../db-provider';
 
 const leaderboard = new Hono();
 
@@ -36,7 +36,7 @@ leaderboard.get('/', async (c) => {
       }
 
       const leaderboardWithMovement = await getLeaderboardWithMovement(date);
-      return c.json({ 
+      return c.json({
         leaderboard: leaderboardWithMovement,
         referenceDate: date,
       });
@@ -130,7 +130,7 @@ leaderboard.get('/users/:id/entries', async (c) => {
 // Listar todos os usuários (público) - inclui excluídos
 leaderboard.get('/users', async (c) => {
   try {
-    const usersStmt = db.prepare('SELECT id, username, created_at, deleted_at FROM users ORDER BY username ASC');
+    const usersStmt = getDb().prepare('SELECT id, username, created_at, deleted_at FROM users ORDER BY username ASC');
     const users = usersStmt.all() as Array<{ id: number; username: string; created_at: string; deleted_at: string | null }>;
 
     const usersWithPoints = await Promise.all(

@@ -8,7 +8,12 @@
     "build": "vite build",
     "build-only": "vite build",
     "preview": "vite preview",
-    "type-check": "vue-tsc --build"
+    "type-check": "vue-tsc --build",
+    "e2e": "cd .. && bun playwright test --config=e2e/playwright.config.ts",
+    "e2e:ui": "cd .. && bun playwright test --ui --config=e2e/playwright.config.ts",
+    "e2e:headed": "cd .. && bun playwright test --headed --config=e2e/playwright.config.ts",
+    "e2e:debug": "cd .. && bun playwright test --debug --config=e2e/playwright.config.ts",
+    "e2e:report": "cd .. && bun playwright show-report e2e/playwright-report"
   },
   "dependencies": {
     "chart.js": "^4.5.1",
@@ -20,6 +25,7 @@
   "devDependencies": {
     "@iconify/json": "^2.2.445",
     "@iconify/tailwind4": "^1.2.1",
+    "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4.2.1",
     "@tsconfig/node24": "^24.0.4",
     "@types/node": "^24.11.0",

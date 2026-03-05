@@ -128,6 +128,7 @@ async function handleSubmit() {
     :model-value="modelValue"
     :title="entry ? 'Editar Entrada' : 'Nova Entrada'"
     size="lg"
+    data-testid="entry-form-modal"
     @update:model-value="$emit('update:modelValue', $event)"
   >
     <form @submit.prevent="handleSubmit" class="space-y-4">
@@ -138,11 +139,12 @@ async function handleSubmit() {
         </label>
         <select
           v-model="selectedActivityType"
+          data-testid="activity-type-select"
           required
           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-sm sm:text-base"
         >
           <option value="" disabled>Selecione...</option>
-          <option v-for="type in activityTypes" :key="type.id" :value="type.id">
+          <option v-for="type in activityTypes" :key="type.id" :value="type.id" :data-testid="`activity-type-option-${type.name}`">
             {{ type.name }} ({{ type.is_positive ? '+' : '' }}{{ type.base_points }} pts)
           </option>
         </select>
@@ -153,6 +155,7 @@ async function handleSubmit() {
         <label class="block text-sm font-medium text-gray-700 mb-2">Descrição</label>
         <textarea
           v-model="description"
+          data-testid="description-input"
           required
           rows="3"
           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-sm sm:text-base"
@@ -167,6 +170,7 @@ async function handleSubmit() {
         </label>
         <input
           v-model.number="durationMinutes"
+          data-testid="duration-input"
           type="number"
           min="1"
           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-sm sm:text-base"
@@ -181,6 +185,7 @@ async function handleSubmit() {
         </label>
         <input
           v-model="entryDate"
+          data-testid="date-input"
           type="date"
           required
           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-sm sm:text-base"
@@ -216,6 +221,7 @@ async function handleSubmit() {
         <input
           type="file"
           accept="image/*"
+          data-testid="photo-input"
           @change="handlePhotoChange"
           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-sm"
         />
@@ -233,6 +239,7 @@ async function handleSubmit() {
         </button>
         <button
           type="submit"
+          data-testid="submit-entry-button"
           :disabled="isUploading"
           class="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base font-medium"
         >

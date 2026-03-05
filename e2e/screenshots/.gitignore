@@ -1,0 +1,7 @@
+# Screenshots e vídeos gerados pelos testes
+*.png
+*.webm
+*.zip
+
+# Manter apenas as pastas vazias
+!.gitkeep

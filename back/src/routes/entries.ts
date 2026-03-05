@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { authMiddleware, type AuthRequest } from '../middleware/auth';
-import { db } from '../db';
+import { getDb } from '../db-provider';
 import {
   getEntryById,
   getEntriesByUser,
@@ -102,8 +102,8 @@ entries.post('/', async (c) => {
 
     // Validação: entryDate é SEMPRE obrigatório
     if (!entryDate || typeof entryDate !== 'string') {
-      return c.json({ 
-        error: 'Data de referência é obrigatória' 
+      return c.json({
+        error: 'Data de referência é obrigatória'
       }, 400);
     }
 
@@ -116,7 +116,7 @@ entries.post('/', async (c) => {
     }
 
     // Validar 1 entrada por categoria por dia
-    const activityTypeStmt = db.prepare('SELECT category_id FROM activity_types WHERE id = ?');
+    const activityTypeStmt = getDb().prepare('SELECT category_id FROM activity_types WHERE id = ?');
     const activityType = activityTypeStmt.get(activityTypeId) as { category_id: number } | undefined;
 
     if (activityType) {
@@ -169,7 +169,7 @@ entries.put('/:id', async (c) => {
 
     // Validação: se estiver mudando a data, verificar conflito na categoria
     if (entryDate && entryDate !== entry.entry_date) {
-      const activityTypeStmt = db.prepare('SELECT category_id FROM activity_types WHERE id = ?');
+      const activityTypeStmt = getDb().prepare('SELECT category_id FROM activity_types WHERE id = ?');
       const activityType = activityTypeStmt.get(entry.activity_type_id) as { category_id: number } | undefined;
 
       if (activityType) {

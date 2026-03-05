@@ -1,5 +1,5 @@
 import type { Migration } from './Migration';
-import { db } from '../db';
+import type { Database } from 'bun:sqlite';
 
 /**
  * Migração 003: Corrige entradas com entry_date NULL
@@ -12,7 +12,7 @@ export class FixNullEntryDateMigration implements Migration {
   readonly name = '003-fix-null-entry-date';
   readonly description = 'Corrige entradas com entry_date NULL usando created_at como referência';
 
-  apply(): void {
+  apply(db: Database): void {
     // Conta quantas entradas serão afetadas
     const countStmt = db.prepare(`
       SELECT COUNT(*) as count

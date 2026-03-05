@@ -1,5 +1,5 @@
 import type { Migration } from './Migration';
-import { db } from '../db';
+import type { Database } from 'bun:sqlite';
 
 /**
  * Migração 005: Remove coluna points de user_entries
@@ -17,7 +17,7 @@ export class DropPointsColumnMigration implements Migration {
   readonly name = '005-drop-points-column';
   readonly description = 'Remove coluna points desatualizada de user_entries';
 
-  apply(): void {
+  apply(db: Database): void {
     // Verifica se a coluna existe
     const tableInfo = db.prepare("PRAGMA table_info(user_entries)").all() as Array<{ name: string }>;
     const hasPoints = tableInfo.some(col => col.name === 'points');
@@ -30,10 +30,10 @@ export class DropPointsColumnMigration implements Migration {
     // Verifica versão do SQLite para DROP COLUMN
     const versionStmt = db.prepare("SELECT sqlite_version() as version").get() as { version: string };
     const [major, minor, patch] = versionStmt.version.split('.').map(Number);
-    
+
     // DROP COLUMN suportado apenas em SQLite 3.35.0+
     const supportsDropColumn = major > 3 || (major === 3 && minor >= 35);
-    
+
     if (!supportsDropColumn) {
       console.log('  ⚠️  SQLite versão', versionStmt.version, 'não suporta DROP COLUMN');
       console.log('  ℹ️  Coluna points será ignorada nas consultas (não causa problemas)');

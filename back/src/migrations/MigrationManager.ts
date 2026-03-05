@@ -1,13 +1,16 @@
-import { db } from '../db';
+import { dbProvider } from '../db-provider';
 import type { Migration } from './Migration';
+import type { Database } from 'bun:sqlite';
 
 /**
  * Gerenciador de migrações do banco de dados
- * 
+ *
  * Responsável por:
  * - Registrar migrações
  * - Rastrear quais migrações já foram aplicadas
  * - Executar migrações pendentes em ordem
+ * 
+ * Usa dbProvider para permitir injeção de dependência em testes
  */
 export class MigrationManager {
   private static migrations: Migration[] = [];
@@ -23,15 +26,19 @@ export class MigrationManager {
 
   /**
    * Executa todas as migrações pendentes
-   * 
+   *
    * Cria a tabela de controle se não existir e executa
    * cada migração registrada que ainda não foi aplicada.
+   * 
+   * @param db - Instância opcional do banco (usa dbProvider se não fornecida)
    */
-  static runAll(): void {
+  static runAll(db?: Database): void {
+    const database = db ?? dbProvider.getDb();
+    
     console.log('🔄 Verificando migrações pendentes...');
 
     // Cria tabela de controle de migrações se não existir
-    this.ensureMigrationsTableExists();
+    this.ensureMigrationsTableExists(database);
 
     if (this.migrations.length === 0) {
       console.log('ℹ️  Nenhuma migração registrada');
@@ -42,7 +49,7 @@ export class MigrationManager {
     let skippedCount = 0;
 
     for (const migration of this.migrations) {
-      if (this.isApplied(migration.name)) {
+      if (this.isApplied(database, migration.name)) {
         console.log(`⏭️  [${migration.name}] Já aplicada - ${migration.description}`);
         skippedCount++;
         continue;
@@ -50,8 +57,8 @@ export class MigrationManager {
 
       try {
         console.log(`🔧 [${migration.name}] Aplicando: ${migration.description}...`);
-        migration.apply();
-        this.markAsApplied(migration.name);
+        migration.apply(database);
+        this.markAsApplied(database, migration.name);
         console.log(`✅ [${migration.name}] Aplicada com sucesso!`);
         appliedCount++;
       } catch (error) {
@@ -72,7 +79,7 @@ export class MigrationManager {
   /**
    * Cria a tabela de controle de migrações se não existir
    */
-  private static ensureMigrationsTableExists(): void {
+  private static ensureMigrationsTableExists(db: Database): void {
     db.run(`
       CREATE TABLE IF NOT EXISTS ${this.MIGRATIONS_TABLE} (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -84,10 +91,11 @@ export class MigrationManager {
 
   /**
    * Verifica se uma migração já foi aplicada
+   * @param db - Instância do banco de dados
    * @param name - Nome da migração
    * @returns true se a migração já foi aplicada, false caso contrário
    */
-  private static isApplied(name: string): boolean {
+  private static isApplied(db: Database, name: string): boolean {
     const stmt = db.prepare(
       `SELECT COUNT(*) as count FROM ${this.MIGRATIONS_TABLE} WHERE name = ?`
     );
@@ -97,9 +105,10 @@ export class MigrationManager {
 
   /**
    * Marca uma migração como aplicada
+   * @param db - Instância do banco de dados
    * @param name - Nome da migração
    */
-  private static markAsApplied(name: string): void {
+  private static markAsApplied(db: Database, name: string): void {
     const stmt = db.prepare(
       `INSERT INTO ${this.MIGRATIONS_TABLE} (name) VALUES (?)`
     );

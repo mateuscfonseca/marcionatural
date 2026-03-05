@@ -1,5 +1,5 @@
 import type { Migration } from './Migration';
-import { db } from '../db';
+import type { Database } from 'bun:sqlite';
 
 /**
  * Migração 002: Adiciona coluna deleted_at na tabela users
@@ -12,7 +12,7 @@ export class AddUserDeletedAtMigration implements Migration {
   readonly name = '002-add-user-deleted-at';
   readonly description = 'Adiciona coluna deleted_at para exclusão lógica na tabela users';
 
-  apply(): void {
+  apply(db: Database): void {
     // Verifica se a coluna já existe
     const tableInfo = db.prepare("PRAGMA table_info(users)").all() as Array<{ name: string }>;
     const hasDeletedAt = tableInfo.some(col => col.name === 'deleted_at');

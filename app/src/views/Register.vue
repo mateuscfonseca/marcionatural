@@ -58,6 +58,7 @@ async function handleSubmit() {
             id="username"
             v-model="username"
             type="text"
+            data-testid="username-input"
             required
             minlength="3"
             autocomplete="username"
@@ -74,6 +75,7 @@ async function handleSubmit() {
             id="password"
             v-model="password"
             type="password"
+            data-testid="password-input"
             required
             minlength="6"
             autocomplete="new-password"
@@ -90,6 +92,7 @@ async function handleSubmit() {
             id="confirmPassword"
             v-model="confirmPassword"
             type="password"
+            data-testid="confirm-password-input"
             required
             autocomplete="new-password"
             class="w-full px-5 py-4 text-lg border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition bg-gray-50 focus:bg-white"
@@ -97,13 +100,14 @@ async function handleSubmit() {
           />
         </div>
 
-        <div v-if="error" class="bg-red-50 border border-red-200 text-red-700 px-5 py-4 rounded-xl text-base font-medium">
+        <div v-if="error" data-testid="register-error" class="bg-red-50 border border-red-200 text-red-700 px-5 py-4 rounded-xl text-base font-medium">
           {{ error }}
         </div>
 
         <button
           type="submit"
           :disabled="loading"
+          data-testid="register-button"
           class="w-full py-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl font-semibold text-lg hover:from-green-700 hover:to-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-xs hover:-translate-y-0.5 cursor-pointer"
         >
           {{ loading ? 'Cadastrando...' : 'Cadastrar' }}

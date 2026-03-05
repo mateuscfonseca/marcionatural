@@ -1,6 +1,8 @@
+import type { Database } from 'bun:sqlite';
+
 /**
  * Interface para migrações do banco de dados
- * 
+ *
  * Cada migração deve ser idempotente - pode ser executada múltiplas vezes
  * sem causar erros ou efeitos colaterais indesejados.
  */
@@ -20,9 +22,11 @@ export interface Migration {
 
   /**
    * Aplica a migração
-   * 
+   *
    * Deve ser idempotente: não deve lançar erro se já foi aplicada.
    * Deve verificar se as mudanças já existem antes de aplicá-las.
+   *
+   * @param db - Instância do banco de dados a ser migrado
    */
-  apply(): void;
+  apply(db: Database): void;
 }

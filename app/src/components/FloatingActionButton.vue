@@ -52,6 +52,7 @@ function closeModals() {
   <div class="fixed bottom-4 sm:bottom-6 mx-auto flex items-center justify-center w-full z-40">
     <!-- Botão Principal -->
     <button
+      data-testid="fab-button"
       @click="isOpen = !isOpen"
       class="w-14 h-14 bg-green-600 text-white rounded-full shadow-lg hover:bg-green-700 transition-all flex items-center justify-center text-2xl cursor-pointer"
       :class="{ 'rotate-45': isOpen }"
@@ -65,6 +66,7 @@ function closeModals() {
       class="absolute bottom-16 bg-white rounded-xl shadow-xl py-2 min-w-[200px] border border-gray-200"
     >
       <button
+        data-testid="fab-new-entry"
         @click="openQuickEntry"
         class="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center gap-3 cursor-pointer"
       >
@@ -75,6 +77,7 @@ function closeModals() {
         </div>
       </button>
       <button
+        data-testid="fab-project-log"
         @click="openProjectLog"
         class="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center gap-3 cursor-pointer"
       >
