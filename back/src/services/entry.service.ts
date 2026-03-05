@@ -61,6 +61,22 @@ export interface UpdateEntryDTO {
   entryDate?: string;
 }
 
+export interface PaginatedEntriesResponse {
+  entries: UserEntry[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+export interface GetEntriesOptions {
+  page?: number;
+  limit?: number;
+  timeFilter?: 'today' | 'last3' | 'last7' | 'all';
+}
+
 /**
  * Busca entrada por ID listando colunas explicitamente
  */
@@ -267,6 +283,178 @@ export async function getUserEntriesWithDetails(userId: number): Promise<UserEnt
   `);
   const entries = stmt.all(userId) as UserEntry[];
   return normalizeEntries(entries);
+}
+
+/**
+ * Busca entradas paginadas de um usuário com filtro temporal
+ */
+export async function getPaginatedEntriesByUser(
+  userId: number,
+  options: GetEntriesOptions = {}
+): Promise<PaginatedEntriesResponse> {
+  const { page = 1, limit = 6, timeFilter = 'all' } = options;
+
+  // Construir filtro temporal
+  let dateFilter = '';
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  let startDate: Date;
+
+  switch (timeFilter) {
+    case 'today':
+      startDate = today;
+      break;
+    case 'last3':
+      startDate = new Date(today.getTime() - 3 * 24 * 60 * 60 * 1000);
+      break;
+    case 'last7':
+      startDate = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+      break;
+    case 'all':
+    default:
+      startDate = new Date(0);
+      break;
+  }
+
+  // Formatar data para SQLite (YYYY-MM-DD)
+  const startDateStr = startDate.toISOString().split('T')[0];
+  dateFilter = `AND e.entry_date >= '${startDateStr}'`;
+
+  // Query para contar total
+  const countStmt = getDb().prepare(`
+    SELECT COUNT(*) as count
+    FROM user_entries e
+    WHERE e.user_id = ? ${timeFilter !== 'all' ? dateFilter : ''}
+  `);
+  const countResult = countStmt.get(userId) as { count: number };
+  const total = countResult.count;
+
+  // Query para buscar entradas paginadas
+  const offset = (page - 1) * limit;
+  const entriesStmt = getDb().prepare(`
+    SELECT
+      e.id,
+      e.user_id,
+      e.activity_type_id,
+      e.description,
+      e.photo_url,
+      e.photo_original_name,
+      e.photo_identifier,
+      e.duration_minutes,
+      e.entry_date,
+      e.is_invalidated,
+      e.invalidated_at,
+      e.created_at,
+      at.name as activity_type_name,
+      at.category_id,
+      at.is_positive as is_activity_positive,
+      at.base_points as points,
+      c.name as category_name,
+      at.is_validated as is_activity_validated
+    FROM user_entries e
+    INNER JOIN activity_types at ON e.activity_type_id = at.id
+    INNER JOIN categories c ON at.category_id = c.id
+    WHERE e.user_id = ? ${timeFilter !== 'all' ? dateFilter : ''}
+    ORDER BY e.created_at DESC
+    LIMIT ? OFFSET ?
+  `);
+
+  const entries = entriesStmt.all(userId, limit, offset) as UserEntry[];
+  const normalizedEntries = normalizeEntries(entries);
+
+  return {
+    entries: normalizedEntries,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
+}
+
+/**
+ * Busca entradas paginadas de um usuário para exibição pública (leaderboard)
+ * Retorna lista única ordenada por data (mais recente primeiro)
+ */
+export async function getPaginatedUserEntriesForLeaderboard(
+  userId: number,
+  options: GetEntriesOptions = {}
+): Promise<{
+  user: { id: number; username: string };
+  entries: UserEntry[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}> {
+  const { page = 1, limit = 6, timeFilter = 'all' } = options;
+
+  // Buscar informações do usuário
+  const userStmt = getDb().prepare('SELECT id, username FROM users WHERE id = ?');
+  const user = userStmt.get(userId) as { id: number; username: string } | undefined;
+
+  if (!user) {
+    throw new Error('Usuário não encontrado');
+  }
+
+  // Buscar todas as entradas do usuário
+  const allEntries = await getEntriesByUser(userId);
+
+  // Aplicar filtro temporal
+  let filteredEntries = allEntries;
+  if (timeFilter !== 'all') {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    let startDate: Date;
+
+    switch (timeFilter) {
+      case 'today':
+        startDate = today;
+        break;
+      case 'last3':
+        startDate = new Date(today.getTime() - 3 * 24 * 60 * 60 * 1000);
+        break;
+      case 'last7':
+        startDate = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      default:
+        startDate = new Date(0);
+    }
+
+    const startDateStr = startDate.toISOString().split('T')[0];
+    filteredEntries = allEntries.filter(e => {
+      const entryDate = e.entry_date || e.created_at.split('T')[0];
+      return entryDate >= startDateStr;
+    });
+  }
+
+  // Filtra apenas activity_types validados
+  const validatedEntries = filteredEntries.filter(e => e.is_activity_validated);
+
+  // Ordenar por entry_date (decrescente - mais recente primeiro)
+  const sortedEntries = validatedEntries.sort((a, b) => {
+    const dateA = a.entry_date || a.created_at;
+    const dateB = b.entry_date || b.created_at;
+    return new Date(dateB).getTime() - new Date(dateA).getTime();
+  });
+
+  // Aplicar paginação
+  const offset = (page - 1) * limit;
+  const paginatedEntries = sortedEntries.slice(offset, offset + limit);
+
+  return {
+    user,
+    entries: paginatedEntries,
+    pagination: {
+      page,
+      limit,
+      total: sortedEntries.length,
+      totalPages: Math.ceil(sortedEntries.length / limit),
+    },
+  };
 }
 
 /**

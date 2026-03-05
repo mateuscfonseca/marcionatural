@@ -11,6 +11,8 @@ import {
   getUserEntriesForLeaderboard,
   hasUserEntryForCategoryDate,
   getUserEntryForDate,
+  getPaginatedEntriesByUser,
+  getPaginatedUserEntriesForLeaderboard,
 } from '../services/entry.service';
 import { getActivityTypesForUser } from '../services/activity-type.service';
 import { CategoryId, CategoryNames } from '../utils/category.enum';
@@ -40,13 +42,19 @@ entries.use('*', async (c, next) => {
   await next();
 });
 
-// Listar minhas entradas
+// Listar minhas entradas (com paginação e filtro temporal)
 entries.get('/', async (c) => {
   try {
     const authRequest = c.req.raw as unknown as AuthRequest;
     const userId = authRequest.user!.userId;
-    const entries = await getUserEntriesWithDetails(userId);
-    return c.json({ entries });
+
+    // Parse query params
+    const page = parseInt(c.req.query('page') || '1');
+    const limit = parseInt(c.req.query('limit') || '6');
+    const timeFilter = c.req.query('timeFilter') as 'today' | 'last3' | 'last7' | 'all' || 'all';
+
+    const result = await getPaginatedEntriesByUser(userId, { page, limit, timeFilter });
+    return c.json(result);
   } catch (error) {
     console.error('Erro ao buscar entradas:', error);
     return c.json({ error: 'Erro interno do servidor' }, 500);
@@ -402,6 +410,28 @@ entries.get('/:id/reports', async (c) => {
     return c.json({ reports, hasReported });
   } catch (error) {
     console.error('Erro ao buscar reports:', error);
+    return c.json({ error: 'Erro interno do servidor' }, 500);
+  }
+});
+
+// Listar entradas de um usuário (para exibição pública - leaderboard)
+entries.get('/users/:userId', async (c) => {
+  try {
+    const targetUserId = parseInt(c.req.param('userId'));
+
+    if (isNaN(targetUserId)) {
+      return c.json({ error: 'ID de usuário inválido' }, 400);
+    }
+
+    // Parse query params
+    const page = parseInt(c.req.query('page') || '1');
+    const limit = parseInt(c.req.query('limit') || '6');
+    const timeFilter = c.req.query('timeFilter') as 'today' | 'last3' | 'last7' | 'all' || 'all';
+
+    const result = await getPaginatedUserEntriesForLeaderboard(targetUserId, { page, limit, timeFilter });
+    return c.json(result);
+  } catch (error) {
+    console.error('Erro ao buscar entradas do usuário:', error);
     return c.json({ error: 'Erro interno do servidor' }, 500);
   }
 });

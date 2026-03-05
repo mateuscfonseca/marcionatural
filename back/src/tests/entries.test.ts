@@ -199,3 +199,347 @@ describe('POST /entries - Validação 1 Alimentação por Dia', () => {
     expect(data.error).toContain('já registrou uma entrada de exercício');
   });
 });
+
+/**
+ * Testes para paginação e filtros temporais
+ */
+describe('GET /entries - Paginação e Filtros Temporais', () => {
+  let testUserId: number;
+  let testUsername: string;
+  let authToken: string;
+  let db: ReturnType<typeof getTestDb>;
+
+  beforeAll(() => {
+    createTestDatabase();
+    db = getTestDb();
+  });
+
+  afterAll(() => {
+    closeTestDatabase();
+  });
+
+  beforeEach(async () => {
+    resetTestData();
+
+    // Criar usuário de teste
+    testUsername = 'testuser_pagination';
+    const userResult = db.run(
+      'INSERT INTO users (username, password_hash) VALUES (?, ?)',
+      [testUsername, 'hash_test']
+    );
+    testUserId = userResult.lastInsertRowid as number;
+
+    // Gerar token de autenticação
+    authToken = await generateToken({
+      userId: testUserId,
+      username: testUsername,
+    });
+  });
+
+  const mockGetRequest = (url: string) => ({
+    method: 'GET',
+    headers: {
+      'Cookie': `auth_token=${authToken}`,
+    },
+    url: `http://localhost${url}`,
+  });
+
+  const createEntry = async (entryDate: string, description: string) => {
+    const app = new Hono();
+    app.route('/api/entries', entriesRoutes);
+
+    const response = await app.request('/api/entries', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': `auth_token=${authToken}`,
+      },
+      body: JSON.stringify({
+        activityTypeId: SEED_IDS.activityTypes.alimentacaoLimpa,
+        description,
+        entryDate,
+      }),
+    });
+    return response;
+  };
+
+  test('deve retornar paginação padrão (page=1, limit=6)', async () => {
+    const app = new Hono();
+    app.route('/api/entries', entriesRoutes);
+
+    // Criar 10 entradas em datas diferentes
+    for (let i = 1; i <= 10; i++) {
+      const day = i.toString().padStart(2, '0');
+      await createEntry(`2025-03-${day}`, `Entrada ${i}`);
+    }
+
+    const response = await app.request('/api/entries', mockGetRequest('/api/entries'));
+    expect(response.status).toBe(200);
+
+    const data = await response.json() as {
+      entries: any[];
+      pagination: { page: number; limit: number; total: number; totalPages: number };
+    };
+
+    expect(data.entries).toHaveLength(6); // limit padrão
+    expect(data.pagination.page).toBe(1);
+    expect(data.pagination.limit).toBe(6);
+    expect(data.pagination.total).toBe(10);
+    expect(data.pagination.totalPages).toBe(2);
+  });
+
+  test('deve retornar página específica quando solicitado', async () => {
+    const app = new Hono();
+    app.route('/api/entries', entriesRoutes);
+
+    // Criar 15 entradas
+    for (let i = 1; i <= 15; i++) {
+      const day = i.toString().padStart(2, '0');
+      await createEntry(`2025-03-${day}`, `Entrada ${i}`);
+    }
+
+    const response = await app.request('/api/entries?page=2&limit=5', mockGetRequest('/api/entries?page=2&limit=5'));
+    expect(response.status).toBe(200);
+
+    const data = await response.json() as {
+      entries: any[];
+      pagination: { page: number; limit: number; total: number; totalPages: number };
+    };
+
+    expect(data.entries).toHaveLength(5);
+    expect(data.pagination.page).toBe(2);
+    expect(data.pagination.limit).toBe(5);
+    expect(data.pagination.total).toBe(15);
+    expect(data.pagination.totalPages).toBe(3);
+  });
+
+  test('deve filtrar por hoje (timeFilter=today)', async () => {
+    const app = new Hono();
+    app.route('/api/entries', entriesRoutes);
+
+    const today = new Date().toISOString().split('T')[0];
+    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+
+    await createEntry(today, 'Entrada de hoje');
+    await createEntry(yesterday, 'Entrada de ontem');
+
+    const response = await app.request(`/api/entries?timeFilter=today`, mockGetRequest(`/api/entries?timeFilter=today`));
+    expect(response.status).toBe(200);
+
+    const data = await response.json() as {
+      entries: any[];
+      pagination: { total: number };
+    };
+
+    expect(data.entries).toHaveLength(1);
+    expect(data.entries[0].description).toBe('Entrada de hoje');
+    expect(data.pagination.total).toBe(1);
+  });
+
+  test('deve filtrar últimos 3 dias (timeFilter=last3)', async () => {
+    const app = new Hono();
+    app.route('/api/entries', entriesRoutes);
+
+    const today = new Date();
+    const dates = [
+      today.toISOString().split('T')[0],
+      new Date(Date.now() - 86400000).toISOString().split('T')[0], // 1 dia atrás
+      new Date(Date.now() - 2 * 86400000).toISOString().split('T')[0], // 2 dias atrás
+      new Date(Date.now() - 5 * 86400000).toISOString().split('T')[0], // 5 dias atrás (fora do filtro)
+    ];
+
+    for (let i = 0; i < dates.length; i++) {
+      await createEntry(dates[i], `Entrada ${i + 1}`);
+    }
+
+    const response = await app.request('/api/entries?timeFilter=last3', mockGetRequest('/api/entries?timeFilter=last3'));
+    expect(response.status).toBe(200);
+
+    const data = await response.json() as {
+      entries: any[];
+      pagination: { total: number };
+    };
+
+    expect(data.entries).toHaveLength(3);
+    expect(data.pagination.total).toBe(3);
+  });
+
+  test('deve filtrar última semana (timeFilter=last7)', async () => {
+    const app = new Hono();
+    app.route('/api/entries', entriesRoutes);
+
+    const today = new Date();
+    const dates = [
+      today.toISOString().split('T')[0],
+      new Date(Date.now() - 3 * 86400000).toISOString().split('T')[0], // 3 dias atrás
+      new Date(Date.now() - 6 * 86400000).toISOString().split('T')[0], // 6 dias atrás
+      new Date(Date.now() - 10 * 86400000).toISOString().split('T')[0], // 10 dias atrás (fora do filtro)
+    ];
+
+    for (let i = 0; i < dates.length; i++) {
+      await createEntry(dates[i], `Entrada ${i + 1}`);
+    }
+
+    const response = await app.request('/api/entries?timeFilter=last7', mockGetRequest('/api/entries?timeFilter=last7'));
+    expect(response.status).toBe(200);
+
+    const data = await response.json() as {
+      entries: any[];
+      pagination: { total: number };
+    };
+
+    expect(data.entries).toHaveLength(3);
+    expect(data.pagination.total).toBe(3);
+  });
+
+  test('deve retornar todas as entradas (timeFilter=all)', async () => {
+    const app = new Hono();
+    app.route('/api/entries', entriesRoutes);
+
+    // Criar entradas em datas variadas
+    await createEntry('2025-01-01', 'Entrada antiga');
+    await createEntry('2025-02-15', 'Entrada média');
+    await createEntry(new Date().toISOString().split('T')[0], 'Entrada recente');
+
+    const response = await app.request('/api/entries?timeFilter=all', mockGetRequest('/api/entries?timeFilter=all'));
+    expect(response.status).toBe(200);
+
+    const data = await response.json() as {
+      entries: any[];
+      pagination: { total: number };
+    };
+
+    expect(data.entries).toHaveLength(3);
+    expect(data.pagination.total).toBe(3);
+  });
+
+  test('deve retornar página vazia quando não houver entradas', async () => {
+    const app = new Hono();
+    app.route('/api/entries', entriesRoutes);
+
+    const response = await app.request('/api/entries', mockGetRequest('/api/entries'));
+    expect(response.status).toBe(200);
+
+    const data = await response.json() as {
+      entries: any[];
+      pagination: { page: number; limit: number; total: number; totalPages: number };
+    };
+
+    expect(data.entries).toHaveLength(0);
+    expect(data.pagination.page).toBe(1);
+    expect(data.pagination.limit).toBe(6);
+    expect(data.pagination.total).toBe(0);
+    expect(data.pagination.totalPages).toBe(0);
+  });
+});
+
+/**
+ * Testes para paginação e filtros temporais - User Entries (público)
+ */
+describe('GET /entries/users/:userId - Paginação e Filtros Temporais', () => {
+  let testUserId: number;
+  let testUsername: string;
+  let authToken: string;
+  let db: ReturnType<typeof getTestDb>;
+
+  beforeAll(() => {
+    createTestDatabase();
+    db = getTestDb();
+  });
+
+  afterAll(() => {
+    closeTestDatabase();
+  });
+
+  beforeEach(async () => {
+    resetTestData();
+
+    // Criar usuário de teste
+    testUsername = 'testuser_public';
+    const userResult = db.run(
+      'INSERT INTO users (username, password_hash) VALUES (?, ?)',
+      [testUsername, 'hash_test']
+    );
+    testUserId = userResult.lastInsertRowid as number;
+
+    // Gerar token de autenticação
+    authToken = await generateToken({
+      userId: testUserId,
+      username: testUsername,
+    });
+  });
+
+  const mockGetRequest = (url: string) => ({
+    method: 'GET',
+    headers: {
+      'Cookie': `auth_token=${authToken}`,
+    },
+    url: `http://localhost${url}`,
+  });
+
+  const createEntry = async (entryDate: string, description: string, activityTypeId: number) => {
+    const app = new Hono();
+    app.route('/api/entries', entriesRoutes);
+
+    const response = await app.request('/api/entries', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': `auth_token=${authToken}`,
+      },
+      body: JSON.stringify({
+        activityTypeId,
+        description,
+        entryDate,
+      }),
+    });
+    return response;
+  };
+
+  test('deve retornar entradas paginadas de outro usuário', async () => {
+    const app = new Hono();
+    app.route('/api/entries', entriesRoutes);
+
+    // Criar 10 entradas positivas (exercícios)
+    for (let i = 1; i <= 10; i++) {
+      const day = i.toString().padStart(2, '0');
+      await createEntry(`2025-03-${day}`, `Exercício ${i}`, SEED_IDS.activityTypes.exercicioFisico);
+    }
+
+    const response = await app.request('/api/entries/users/' + testUserId, mockGetRequest('/api/entries/users/' + testUserId));
+    expect(response.status).toBe(200);
+
+    const data = await response.json() as {
+      user: { id: number; username: string };
+      positive: { entries: any[]; pagination: { total: number } };
+      negative: { entries: any[]; pagination: { total: number } };
+      all: any[];
+    };
+
+    expect(data.user.username).toBe(testUsername);
+    expect(data.positive.entries).toHaveLength(6); // limit padrão
+    expect(data.positive.pagination.total).toBe(10);
+  });
+
+  test('deve aplicar filtro temporal em entradas de usuário público', async () => {
+    const app = new Hono();
+    app.route('/api/entries', entriesRoutes);
+
+    const today = new Date().toISOString().split('T')[0];
+    const oldDate = '2025-01-01';
+
+    await createEntry(today, 'Exercício recente', SEED_IDS.activityTypes.exercicioFisico);
+    await createEntry(oldDate, 'Exercício antigo', SEED_IDS.activityTypes.exercicioFisico);
+
+    const response = await app.request(`/api/entries/users/${testUserId}?timeFilter=today`, mockGetRequest(`/api/entries/users/${testUserId}?timeFilter=today`));
+    expect(response.status).toBe(200);
+
+    const data = await response.json() as {
+      positive: { entries: any[]; pagination: { total: number } };
+    };
+
+    expect(data.positive.entries).toHaveLength(1);
+    expect(data.positive.entries[0].description).toBe('Exercício recente');
+    expect(data.positive.pagination.total).toBe(1);
+  });
+});
