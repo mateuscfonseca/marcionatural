@@ -62,7 +62,7 @@ export interface UpdateEntryDTO {
 }
 
 /**
- * Busca entrada por ID listando colunas explicitamente (sem points)
+ * Busca entrada por ID listando colunas explicitamente
  */
 export async function getEntryById(id: number): Promise<UserEntry | undefined> {
   const stmt = getDb().prepare(`
@@ -82,6 +82,7 @@ export async function getEntryById(id: number): Promise<UserEntry | undefined> {
       at.name as activity_type_name,
       at.category_id,
       at.is_positive as is_activity_positive,
+      at.base_points as points,
       c.name as category_name,
       at.is_validated as is_activity_validated
     FROM user_entries e
@@ -99,7 +100,7 @@ export async function getEntryById(id: number): Promise<UserEntry | undefined> {
 }
 
 /**
- * Busca entradas por usuário listando colunas explicitamente (sem points)
+ * Busca entradas por usuário listando colunas explicitamente
  */
 export async function getEntriesByUser(userId: number): Promise<UserEntry[]> {
   const stmt = getDb().prepare(`
@@ -119,6 +120,7 @@ export async function getEntriesByUser(userId: number): Promise<UserEntry[]> {
       at.name as activity_type_name,
       at.category_id,
       at.is_positive as is_activity_positive,
+      at.base_points as points,
       c.name as category_name,
       at.is_validated as is_activity_validated
     FROM user_entries e
@@ -132,7 +134,7 @@ export async function getEntriesByUser(userId: number): Promise<UserEntry[]> {
 }
 
 /**
- * Busca todas as entradas listando colunas explicitamente (sem points)
+ * Busca todas as entradas listando colunas explicitamente
  */
 export async function getAllEntries(): Promise<UserEntry[]> {
   const stmt = getDb().prepare(`
@@ -152,6 +154,7 @@ export async function getAllEntries(): Promise<UserEntry[]> {
       at.name as activity_type_name,
       at.category_id,
       at.is_positive as is_activity_positive,
+      at.base_points as points,
       c.name as category_name,
       at.is_validated as is_activity_validated
     FROM user_entries e
@@ -233,7 +236,7 @@ export async function deleteEntry(id: number): Promise<boolean> {
 }
 
 /**
- * Busca entradas do usuário listando colunas explicitamente (sem points)
+ * Busca entradas do usuário listando colunas explicitamente
  */
 export async function getUserEntriesWithDetails(userId: number): Promise<UserEntry[]> {
   const stmt = getDb().prepare(`
@@ -253,6 +256,7 @@ export async function getUserEntriesWithDetails(userId: number): Promise<UserEnt
       at.name as activity_type_name,
       at.category_id,
       at.is_positive as is_activity_positive,
+      at.base_points as points,
       c.name as category_name,
       at.is_validated as is_activity_validated
     FROM user_entries e
@@ -352,6 +356,8 @@ export async function getUserEntryForDate(userId: number, entryDate: string): Pr
       e.created_at,
       at.name as activity_type_name,
       at.category_id,
+      at.is_positive as is_activity_positive,
+      at.base_points as points,
       c.name as category_name,
       at.is_validated as is_activity_validated
     FROM user_entries e

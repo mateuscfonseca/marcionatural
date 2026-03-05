@@ -4,6 +4,7 @@ import { getMyEntries, deleteEntry, getValidatedActivityTypes, getEntryReports }
 import type { UserEntry, ActivityType, EntryReport } from '@/types';
 import EntryFormModal from '@/components/EntryFormModal.vue';
 import EntryProgressModal from '@/components/EntryProgressModal.vue';
+import { CategoryId } from '@/utils/category.enum';
 
 const entries = ref<UserEntry[]>([]);
 const activityTypes = ref<ActivityType[]>([]);
@@ -22,8 +23,8 @@ const currentPagePositive = ref(1);
 const currentPageNegative = ref(1);
 const entriesPerPage = ref(6);
 
-const positiveEntries = computed(() => entries.value.filter(e => e.category_id === 2 || (e.category_id === 1 && e.is_activity_positive)));
-const negativeEntries = computed(() => entries.value.filter(e => e.category_id === 4 || (e.category_id === 1 && !e.is_activity_positive)));
+const positiveEntries = computed(() => entries.value.filter(e => e.category_id === CategoryId.EXERCICIO || (e.category_id === CategoryId.REFEICAO && e.is_activity_positive)));
+const negativeEntries = computed(() => entries.value.filter(e => e.category_id === CategoryId.ENTORPECENTES || (e.category_id === CategoryId.REFEICAO && !e.is_activity_positive)));
 const invalidatedEntries = computed(() => entries.value.filter(e => !e.is_activity_validated));
 
 // Paginação

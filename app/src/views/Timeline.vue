@@ -3,6 +3,7 @@ import { ref, onMounted, computed } from 'vue';
 import { getTimeline } from '@/services/api';
 import type { TimelineEntry } from '@/types';
 import { useRouter } from 'vue-router';
+import { CategoryId, CategoryNames } from '@/utils/category.enum';
 
 const router = useRouter();
 
@@ -80,16 +81,16 @@ function getCategoryIcon(entry: TimelineEntry): string {
     return '📚';
   }
 
-  if (entry.category_id === 1) {
+  if (entry.category_id === CategoryId.REFEICAO) {
     // Alimentação
     return entry.points >= 0 ? '🥗' : '🍔';
-  } else if (entry.category_id === 2) {
+  } else if (entry.category_id === CategoryId.EXERCICIO) {
     // Exercício
     return '💪';
-  } else if (entry.category_id === 3) {
+  } else if (entry.category_id === CategoryId.PROJETO_PESSOAL) {
     // Projeto Pessoal
     return '📚';
-  } else if (entry.category_id === 4) {
+  } else if (entry.category_id === CategoryId.ENTORPECENTES) {
     // Entorpecentes
     return '🚬';
   }
@@ -101,13 +102,7 @@ function getCategoryName(entry: TimelineEntry): string {
     return 'Projeto Pessoal';
   }
 
-  const categories: Record<number, string> = {
-    1: 'Alimentação',
-    2: 'Exercício',
-    3: 'Projeto Pessoal',
-    4: 'Entorpecentes',
-  };
-  return categories[entry.category_id || 0] || 'Atividade';
+  return CategoryNames[entry.category_id as CategoryId] || 'Atividade';
 }
 
 function getPointsClass(points: number): string {

@@ -5,6 +5,7 @@ import { getUserEntries, getEntryReports, reportEntry, getUserProjectsWithProgre
 import type { UserEntry, EntryReport, ProjectWithProgress } from '@/types';
 import { useToast } from '@/composables/useToast';
 import { createApiErrorHandler } from '@/utils/handleApiError';
+import { CategoryId } from '@/utils/category.enum';
 import EntryProgressModal from '@/components/EntryProgressModal.vue';
 
 const route = useRoute();
@@ -23,8 +24,8 @@ const showEntryModal = ref(false);
 const entryReports = ref<EntryReport[]>([]);
 const hasReported = ref(false);
 
-const positiveEntries = computed(() => entries.value.filter(e => e.category_id === 2 || (e.category_id === 1 && e.is_activity_positive)));
-const negativeEntries = computed(() => entries.value.filter(e => e.category_id === 4 || (e.category_id === 1 && !e.is_activity_positive)));
+const positiveEntries = computed(() => entries.value.filter(e => e.category_id === CategoryId.EXERCICIO || (e.category_id === CategoryId.REFEICAO && e.is_activity_positive)));
+const negativeEntries = computed(() => entries.value.filter(e => e.category_id === CategoryId.ENTORPECENTES || (e.category_id === CategoryId.REFEICAO && !e.is_activity_positive)));
 const invalidatedEntries = computed(() => entries.value.filter(e => !e.is_activity_validated));
 
 async function loadEntries() {
