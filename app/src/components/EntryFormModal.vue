@@ -131,7 +131,7 @@ async function handleSubmit() {
     data-testid="entry-form-modal"
     @update:model-value="$emit('update:modelValue', $event)"
   >
-    <form @submit.prevent="handleSubmit" class="space-y-4">
+    <form @submit.prevent="handleSubmit" class="space-y-4" [data-testid="entry-form-modal"]>
       <!-- Tipo de Atividade -->
       <div v-if="showActivityTypeSelect">
         <label class="block text-sm font-medium text-gray-700 mb-2">

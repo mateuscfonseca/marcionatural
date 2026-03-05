@@ -295,7 +295,7 @@ onMounted(() => {
                   </span>
                   <span class="flex items-center gap-1">
                     <span>📅</span>
-                    <span>{{ formatDate(entry.entry_date) }}</span>
+                    <span>{{ formatDate(entry.created_at) }}</span>
                   </span>
                 </div>
               </div>
