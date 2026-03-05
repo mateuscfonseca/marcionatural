@@ -2,7 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 
 /**
  * Configuração do Playwright para testes E2E do Marcio Natural
- * 
+ *
  * Uso:
  *   bun run e2e           # Rodar todos os testes (headless)
  *   bun run e2e:ui        # Interface interativa
@@ -11,7 +11,7 @@ import { defineConfig, devices } from '@playwright/test';
  *   bun run e2e:report    # Abrir relatório HTML
  */
 export default defineConfig({
-  testDir: './tests',
+  testDir: './e2e/tests',
 
   // Timeout por teste
   timeout: 60 * 1000,
@@ -37,13 +37,15 @@ export default defineConfig({
   reporter: [
     ['html', { outputFolder: './playwright-report', open: 'never' }],
     ['list'],
-    ['./custom-reporter.ts'],  // Reporter customizado com logs detalhados
+    ['./e2e/custom-reporter.ts'],  // Reporter customizado com logs detalhados
   ],
 
   // Shared settings for all the projects below
   use: {
     // Base URL para todas as requisições
-    baseURL: process.env.BASE_URL || 'http://localhost:9000',
+    // Padrão: 5173 (Vite dev server)
+    // Para produção (Docker), use BASE_URL=http://localhost:9000
+    baseURL: process.env.BASE_URL || 'http://localhost:5173',
 
     // Screenshot em TODOS os testes
     screenshot: {
@@ -82,7 +84,7 @@ export default defineConfig({
   ],
 
   // Pasta de saída
-  outputDir: './test-results',
+  outputDir: './e2e/test-results',
 
   // Pasta para snapshots
   snapshotPathTemplate: '{testDir}/__snapshots__/{testFilePath}/{arg}{ext}',

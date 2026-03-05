@@ -1,22 +1,19 @@
 /**
  * Seed específico para testes E2E
  * Cria usuários e dados previsíveis para testes de interface
- * 
- * Este script:
- * 1. Cria o banco de dados com schema + seeds básicos
- * 2. Executa todas as migrations registradas usando dbProvider
- * 3. Popula com dados de teste para E2E
+ *
+ * Este script usa dbProvider para garantir que o backend use o MESMO banco.
  *
  * Uso:
- *   DATABASE_PATH=./data/test.db bun run src/scripts/seed-e2e.ts
+ *   export DATABASE_PATH=./data/test.db
+ *   bun run src/scripts/seed-e2e.ts
  */
 
-import { Database } from 'bun:sqlite';
 import bcrypt from 'bcryptjs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
-import { dbProvider } from '../db-provider';
+import { getDb } from '../db-provider';
 import { MigrationManager } from '../migrations';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -86,10 +83,8 @@ const REPORT_TEST_DATA = [
   { daysAgo: 1, activityTypeName: 'Alimentacao Limpa', description: 'Entrada suspeita para report', categoryId: 1, isPositive: true, basePoints: 10 },
 ];
 
-let testDb: Database;
-
 function getOrCreateActivityType(name: string, categoryId: number, isPositive: boolean, basePoints: number): number {
-  const db = dbProvider.getDb();
+  const db = getDb();
   const existing = db.prepare('SELECT id FROM activity_types WHERE name = ?').get(name) as { id: number } | undefined;
   if (existing) {
     return existing.id;
@@ -104,7 +99,7 @@ function getOrCreateActivityType(name: string, categoryId: number, isPositive: b
 function createUsers() {
   console.log('📝 Criando usuários de teste E2E...');
   const userIds: Record<string, number> = {};
-  const db = dbProvider.getDb();
+  const db = getDb();
 
   for (const user of E2E_USERS) {
     const existing = db.prepare('SELECT id FROM users WHERE username = ?').get(user.username) as { id: number } | undefined;
@@ -126,7 +121,7 @@ function createUsers() {
 
 function createHistoricalEntries(userIds: Record<string, number>) {
   console.log('\n📊 Criando entradas históricas para testes...');
-  const db = dbProvider.getDb();
+  const db = getDb();
   const activityTypeCache: Record<string, number> = {};
 
   for (const [username, entries] of Object.entries(HISTORICAL_DATA)) {
@@ -157,7 +152,7 @@ function createHistoricalEntries(userIds: Record<string, number>) {
 
 function createPaginationTestData(userIds: Record<string, number>) {
   console.log('\n📄 Criando entradas para teste de paginação...');
-  const db = dbProvider.getDb();
+  const db = getDb();
   const userId = userIds['test_user_1'];
   if (!userId) return;
   const activityTypeCache: Record<string, number> = {};
@@ -184,7 +179,7 @@ function createPaginationTestData(userIds: Record<string, number>) {
 
 function createReportTestData(userIds: Record<string, number>) {
   console.log('\n🚨 Criando entradas para teste de reports...');
-  const db = dbProvider.getDb();
+  const db = getDb();
   const reporterId = userIds['test_reporter'];
   const targetUsername = 'test_user_2';
   const targetId = userIds[targetUsername];
@@ -219,7 +214,7 @@ function createReportTestData(userIds: Record<string, number>) {
       }
     }
     db.prepare(`
-      UPDATE user_entries 
+      UPDATE user_entries
       SET is_invalidated = TRUE, invalidated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `).run(entryId);
@@ -229,7 +224,7 @@ function createReportTestData(userIds: Record<string, number>) {
 
 function createProjectsTestData(userIds: Record<string, number>) {
   console.log('\n📁 Criando projetos para testes...');
-  const db = dbProvider.getDb();
+  const db = getDb();
   const userId = userIds['test_user_1'];
   if (!userId) return;
   const projectResult = db.prepare(`
@@ -254,7 +249,7 @@ function createProjectsTestData(userIds: Record<string, number>) {
 
 function cleanPreviousE2eData() {
   console.log('🧹 Limpando dados de testes E2E anteriores...');
-  const db = dbProvider.getDb();
+  const db = getDb();
   db.prepare('DELETE FROM project_daily_logs WHERE project_id IN (SELECT id FROM personal_projects WHERE user_id >= 1000)').run();
   db.prepare('DELETE FROM entry_reports WHERE entry_id IN (SELECT id FROM user_entries WHERE user_id >= 1000)').run();
   db.prepare('DELETE FROM activity_type_votes WHERE user_id >= 1000').run();
@@ -266,54 +261,48 @@ function cleanPreviousE2eData() {
 }
 
 function runMigrations() {
-  console.log('\n🔄 Executando migrations com dbProvider...\n');
+  console.log('\n🔄 Executando migrations...\n');
   MigrationManager.runAll();
 }
 
 function main() {
   const dbPath = process.env.DATABASE_PATH || './data/test.db';
   console.log(`🌱 Iniciando seed E2E (banco: ${dbPath})...\n`);
+  console.log(`📍 DATABASE_PATH env: ${process.env.DATABASE_PATH || 'not set'}`);
 
   try {
-    const dataDir = dirname(dbPath);
-    if (!fs.existsSync(dataDir)) {
-      fs.mkdirSync(dataDir, { recursive: true });
-    }
-    if (fs.existsSync(dbPath)) {
-      fs.unlinkSync(dbPath);
-    }
-    if (fs.existsSync(dbPath + '-wal')) {
-      fs.unlinkSync(dbPath + '-wal');
-    }
-    if (fs.existsSync(dbPath + '-shm')) {
-      fs.unlinkSync(dbPath + '-shm');
-    }
+    // getDb() vai usar DATABASE_PATH do ambiente
+    // Não precisamos criar o banco manualmente!
+    const db = getDb();
 
-    testDb = new Database(dbPath);
-    testDb.exec('PRAGMA journal_mode = WAL');
-    dbProvider.setTestDb(testDb);
+    console.log(`\n📐 Database path: ${dbPath}`);
+    console.log(`📐 Criando schema e seeds básicos...\n`);
 
-    console.log('📐 Criando schema e seeds básicos...\n');
+    // Executa schema
     const schemaPath = join(__dirname, '..', 'schema.sql');
     const schema = fs.readFileSync(schemaPath, 'utf-8');
-    testDb.exec(schema);
+    db.exec(schema);
     console.log('  ✅ Schema base criado');
 
+    // Executa seeds básicos
     const seedsPath = join(__dirname, '..', 'seeds.sql');
     const seeds = fs.readFileSync(seedsPath, 'utf-8');
     const statements = seeds.split(';').filter(s => s.trim().length > 0);
     for (const statement of statements) {
       try {
-        testDb.exec(statement);
+        db.exec(statement);
       } catch {
         // Ignora erros de inserts duplicados
       }
     }
     console.log('  ✅ Seeds básicos executados');
 
+    // Executa migrations (usa o banco injetado via dbProvider)
     runMigrations();
     console.log('\n✅ Schema + Migrations concluídos!\n');
 
+    // Limpa dados anteriores e cria dados de teste
+    cleanPreviousE2eData();
     const userIds = createUsers();
     createHistoricalEntries(userIds);
     createPaginationTestData(userIds);
@@ -325,21 +314,11 @@ function main() {
     for (const user of E2E_USERS) {
       console.log(`   ${user.username} / ${user.password}`);
     }
+    console.log(`\n📍 Banco de dados: ${dbPath}`);
+    console.log('📍 Backend deve usar o MESMO banco (já injetado no dbProvider)');
   } catch (error) {
     console.error('❌ Erro ao executar seed E2E:', error);
     process.exit(1);
-  } finally {
-    if (testDb) {
-      testDb.close();
-    }
-    dbProvider.reset();
-    const dbPath = process.env.DATABASE_PATH || './data/test.db';
-    if (fs.existsSync(dbPath + '-wal')) {
-      fs.unlinkSync(dbPath + '-wal');
-    }
-    if (fs.existsSync(dbPath + '-shm')) {
-      fs.unlinkSync(dbPath + '-shm');
-    }
   }
 }
 

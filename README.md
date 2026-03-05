@@ -387,48 +387,57 @@ Todos os testes geram automaticamente:
 #### Estrutura de Arquivos Gerados
 
 ```
-e2e/
-├── test-results/           # Resultados por teste
-│   ├── auth-login-success/
-│   │   ├── 00-initial-state-2024-01-01T12_00_00.png
-│   │   ├── 01-login-page-2024-01-01T12_00_01.png
-│   │   ├── video.webm
-│   │   └── trace.zip
-│   └── entries-create-failure/
-│       ├── assert-fail-validacao-2024-01-01T12_00_02.png
-│       └── video.webm
-├── screenshots/            # Screenshots organizados
-│   ├── success/            # Screenshots de testes bem-sucedidos
-│   │   ├── login-success-2024-01-01T12_00_00.png
-│   │   └── create-entry-2024-01-01T12_00_01.png
-│   └── error/              # Screenshots de erros
-│       ├── validation-fail-2024-01-01T12_00_02.png
-│       └── assert-error-2024-01-01T12_00_03.png
-└── playwright-report/      # Relatório HTML rico
-    ├── index.html
-    └── ...
+app/
+├── e2e/
+│   ├── test-results/           # Resultados por teste
+│   │   ├── auth-login-success/
+│   │   │   ├── 00-initial-state-2024-01-01T12_00_00.png
+│   │   │   ├── 01-login-page-2024-01-01T12_00_01.png
+│   │   │   ├── video.webm
+│   │   │   └── trace.zip
+│   │   └── entries-create-failure/
+│   │       ├── assert-fail-validacao-2024-01-01T12_00_02.png
+│   │       └── video.webm
+│   ├── screenshots/            # Screenshots organizados
+│   │   ├── success/            # Screenshots de testes bem-sucedidos
+│   │   │   ├── login-success-2024-01-01T12_00_00.png
+│   │   │   └── create-entry-2024-01-01T12_00_01.png
+│   │   └── error/              # Screenshots de erros
+│   │       ├── validation-fail-2024-01-01T12_00_02.png
+│   │       └── assert-error-2024-01-01T12_00_03.png
+│   ├── tests/                  # Arquivos de teste
+│   ├── utils/                  # Helpers de teste
+│   ├── fixtures/               # Fixtures do Playwright
+│   └── custom-reporter.ts      # Reporter personalizado
+├── playwright-report/          # Relatório HTML rico
+│   ├── index.html
+│   └── ...
+└── playwright.config.ts        # Configuração do Playwright
 ```
 
 ### Estrutura de Testes
 
 ```
-e2e/
-├── tests/
-│   ├── auth.spec.ts          # Login, registro, logout, rotas protegidas
-│   ├── entries.spec.ts       # CRUD de entradas, upload, filtros, paginação
-│   ├── leaderboard.spec.ts   # Ranking, polling, pontos
-│   ├── users.spec.ts         # Lista de usuários, entradas de outros usuários
-│   ├── voting.spec.ts        # Reports, votação, entradas invalidadas
-│   ├── projects.spec.ts      # Projetos pessoais, registro de tempo
-│   ├── timeline.spec.ts      # Timeline, ordenação, filtros
-│   └── navigation.spec.ts    # Sidebar, menu, FAB, toast messages
-├── utils/
-│   ├── test-helpers.ts       # Helpers para screenshots e logs
-│   └── test-common.ts        # Funções reutilizáveis (login, navigate)
-├── fixtures/
-│   └── test-fixtures.ts      # Fixtures reutilizáveis
-├── custom-reporter.ts        # Reporter personalizado com logs
-└── playwright.config.ts      # Configuração do Playwright
+app/
+├── e2e/
+│   ├── tests/
+│   │   ├── auth.spec.ts          # Login, registro, logout, rotas protegidas
+│   │   ├── entries.spec.ts       # CRUD de entradas, upload, filtros, paginação
+│   │   ├── leaderboard.spec.ts   # Ranking, polling, pontos
+│   │   ├── users.spec.ts         # Lista de usuários, entradas de outros usuários
+│   │   ├── voting.spec.ts        # Reports, votação, entradas invalidadas
+│   │   ├── projects.spec.ts      # Projetos pessoais, registro de tempo
+│   │   ├── timeline.spec.ts      # Timeline, ordenação, filtros
+│   │   └── navigation.spec.ts    # Sidebar, menu, FAB, toast messages
+│   ├── utils/
+│   │   ├── test-helpers.ts       # Helpers para screenshots e logs
+│   │   └── test-common.ts        # Funções reutilizáveis (login, navigate)
+│   ├── fixtures/
+│   │   └── test-fixtures.ts      # Fixtures reutilizáveis
+│   ├── custom-reporter.ts        # Reporter personalizado com logs
+│   └── playwright.config.ts      # Configuração do Playwright
+├── playwright-report/            # Relatório HTML (gerado)
+└── playwright.config.ts          # Config (movido para app/)
 ```
 
 ### Como Rodar os Testes
@@ -470,6 +479,10 @@ bun run e2e:report
 
 # Limpar resultados anteriores
 bun run e2e:clean
+
+# Script completo automatizado (recomendado)
+cd ..
+./scripts/run-e2e-tests.sh
 ```
 
 ### Scripts Disponíveis

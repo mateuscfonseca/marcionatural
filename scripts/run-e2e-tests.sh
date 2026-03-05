@@ -30,6 +30,7 @@ NO_OPEN=false
 KEEP_RUNNING=false
 CLEAN=true
 SPEC_TEST=""
+DOCKER_MODE=false
 
 # PIDs dos processos em background
 BACKEND_PID=""
@@ -82,6 +83,14 @@ cleanup() {
         log_success "Frontend parado"
     fi
     
+    # Para containers Docker se estiver no modo Docker
+    if [ "$DOCKER_MODE" = true ]; then
+        log_info "Parando containers Docker..."
+        cd "$PROJECT_ROOT"
+        docker-compose down > /dev/null 2>&1 || true
+        log_success "Containers parados"
+    fi
+    
     # Limpa arquivos WAL do SQLite
     rm -f "$TEST_DB_PATH-wal" "$TEST_DB_PATH-shm" 2>/dev/null || true
 }
@@ -89,9 +98,9 @@ cleanup() {
 clean_previous_results() {
     log_info "Limpando resultados anteriores..."
     cd "$APP_DIR"
-    rm -rf test-results
-    rm -rf screenshots/success/*.png 2>/dev/null || true
-    rm -rf screenshots/error/*.png 2>/dev/null || true
+    rm -rf e2e/test-results
+    rm -rf e2e/screenshots/success/*.png 2>/dev/null || true
+    rm -rf e2e/screenshots/error/*.png 2>/dev/null || true
     rm -rf playwright-report
     log_success "Resultados limpos"
 }
@@ -128,8 +137,11 @@ ${YELLOW}OPÇÕES:${NC}
     ${GREEN}--help${NC}        Mostra esta ajuda
 
 ${YELLOW}EXEMPLOS:${NC}
-    # Rodar todos os testes (headless)
+    # Rodar todos os testes (headless) - Vite dev server (porta 5173)
     ./scripts/run-e2e-tests.sh
+
+    # Rodar com Docker (produção, porta 9000)
+    ./scripts/run-e2e-tests.sh --docker
 
     # Rodar com browser visível
     ./scripts/run-e2e-tests.sh --headed
@@ -175,6 +187,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --spec=*)
             SPEC_TEST="${1#*=}"
+            shift
+            ;;
+        --docker)
+            DOCKER_MODE=true
             shift
             ;;
         --help|-h)
@@ -232,8 +248,12 @@ fi
 log_step "Executando Seed E2E"
 
 cd "$BACK_DIR"
-log_info "Rodando seed com migrations..."
-DATABASE_PATH="$TEST_DB_PATH" bun run seed-e2e
+log_info "DATABASE_PATH: $TEST_DB_PATH"
+
+# Exporta DATABASE_PATH antes de rodar seed
+# Seed vai usar dbProvider.getDb() que lê DATABASE_PATH
+export DATABASE_PATH="$TEST_DB_PATH"
+DATABASE_PATH="$DATABASE_PATH" bun run seed-e2e
 
 if [ $? -eq 0 ]; then
     log_success "Seed E2E executado com sucesso"
@@ -250,7 +270,18 @@ log_step "Iniciando Backend"
 
 cd "$BACK_DIR"
 log_info "Iniciando backend em background..."
-DATABASE_PATH="$TEST_DB_PATH" bun run dev > "$PROJECT_ROOT/e2e/backend.log" 2>&1 &
+log_info "DATABASE_PATH: $TEST_DB_PATH"
+log_info "NODE_ENV: test"
+log_info "SKIP_DB_INIT: true"
+
+# Exporta variáveis para o processo filho
+# NODE_ENV=test e SKIP_DB_INIT=true previnem initDatabase()
+# Seed E2E já criou schema + migrations + seeds
+export DATABASE_PATH="$TEST_DB_PATH"
+export NODE_ENV=test
+export SKIP_DB_INIT=true
+
+DATABASE_PATH="$DATABASE_PATH" NODE_ENV="$NODE_ENV" SKIP_DB_INIT="$SKIP_DB_INIT" bun run dev > "$PROJECT_ROOT/backend.log" 2>&1 &
 BACKEND_PID=$!
 log_info "Backend iniciado (PID: $BACKEND_PID)"
 
@@ -280,28 +311,56 @@ fi
 log_step "Iniciando Frontend"
 
 cd "$APP_DIR"
-log_info "Iniciando frontend em background..."
-bun run dev > "$PROJECT_ROOT/e2e/frontend.log" 2>&1 &
-FRONTEND_PID=$!
-log_info "Frontend iniciado (PID: $FRONTEND_PID)"
 
-# Aguarda frontend estar pronto
-log_info "Aguardando frontend estar pronto..."
-MAX_ATTEMPTS=30
-ATTEMPT=0
-while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
-    if curl -s http://localhost:5173 > /dev/null 2>&1; then
-        log_success "Frontend pronto!"
-        break
+if [ "$DOCKER_MODE" = true ]; then
+    # Modo Docker - usa containers na porta 9000
+    log_info "Iniciando containers Docker..."
+    cd "$PROJECT_ROOT"
+    docker-compose up -d
+    log_info "Aguardando containers estarem prontos..."
+    sleep 10
+    
+    # Verifica se frontend está pronto na porta 9000
+    for i in {1..30}; do
+        if curl -s http://localhost:9000 > /dev/null 2>&1; then
+            log_success "Frontend Docker pronto!"
+            break
+        fi
+        sleep 1
+    done
+    
+    # Exporta BASE_URL para testes
+    export BASE_URL="http://localhost:9000"
+    log_info "BASE_URL: $BASE_URL"
+else
+    # Modo Desenvolvimento - usa Vite na porta 5173
+    log_info "Iniciando frontend em background (Vite)..."
+    bun run dev > "$PROJECT_ROOT/frontend.log" 2>&1 &
+    FRONTEND_PID=$!
+    log_info "Frontend iniciado (PID: $FRONTEND_PID)"
+
+    # Aguarda frontend estar pronto
+    log_info "Aguardando frontend estar pronto..."
+    MAX_ATTEMPTS=30
+    ATTEMPT=0
+    while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+        if curl -s http://localhost:5173 > /dev/null 2>&1; then
+            log_success "Frontend pronto!"
+            break
+        fi
+        ATTEMPT=$((ATTEMPT + 1))
+        sleep 1
+    done
+
+    if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
+        log_error "Frontend não ficou pronto em $MAX_ATTEMPTS segundos"
+        log_error "Verifique o log: $PROJECT_ROOT/frontend.log"
+        exit 1
     fi
-    ATTEMPT=$((ATTEMPT + 1))
-    sleep 1
-done
-
-if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
-    log_error "Frontend não ficou pronto em $MAX_ATTEMPTS segundos"
-    log_error "Verifique o log: $PROJECT_ROOT/e2e/frontend.log"
-    exit 1
+    
+    # Exporta BASE_URL para testes
+    export BASE_URL="http://localhost:5173"
+    log_info "BASE_URL: $BASE_URL"
 fi
 
 ###############################################################################
@@ -374,23 +433,23 @@ echo -e "${CYAN}├────────────────────�
 
 # Conta resultados
 cd "$APP_DIR"
-if [ -d "test-results" ]; then
-    TOTAL_TESTS=$(find test-results -name "*.png" | wc -l | tr -d ' ')
+if [ -d "e2e/test-results" ]; then
+    TOTAL_TESTS=$(find e2e/test-results -name "*.png" | wc -l | tr -d ' ')
     log_info "Screenshots gerados: $TOTAL_TESTS"
 fi
 
-if [ -d "screenshots/success" ]; then
-    SUCCESS_SCREENS=$(find screenshots/success -name "*.png" 2>/dev/null | wc -l | tr -d ' ')
+if [ -d "e2e/screenshots/success" ]; then
+    SUCCESS_SCREENS=$(find e2e/screenshots/success -name "*.png" 2>/dev/null | wc -l | tr -d ' ')
     log_info "Screenshots de sucesso: $SUCCESS_SCREENS"
 fi
 
-if [ -d "screenshots/error" ]; then
-    ERROR_SCREENS=$(find screenshots/error -name "*.png" 2>/dev/null | wc -l | tr -d ' ')
+if [ -d "e2e/screenshots/error" ]; then
+    ERROR_SCREENS=$(find e2e/screenshots/error -name "*.png" 2>/dev/null | wc -l | tr -d ' ')
     log_info "Screenshots de erro: $ERROR_SCREENS"
 fi
 
-if [ -d "test-results" ]; then
-    VIDEO_COUNT=$(find test-results -name "*.webm" 2>/dev/null | wc -l | tr -d ' ')
+if [ -d "e2e/test-results" ]; then
+    VIDEO_COUNT=$(find e2e/test-results -name "*.webm" 2>/dev/null | wc -l | tr -d ' ')
     log_info "Vídeos gerados: $VIDEO_COUNT"
 fi
 
@@ -398,10 +457,10 @@ echo -e "${CYAN}├────────────────────�
 echo -e "${CYAN}│${NC} ${BLUE}📁 ARQUIVOS GERADOS${NC}"
 echo -e "${CYAN}├─────────────────────────────────────────────────────────────────┤${NC}"
 echo -e "${CYAN}│${NC} Relatório HTML: ${MAGENTA}$APP_DIR/playwright-report/index.html${NC}"
-echo -e "${CYAN}│${NC} Screenshots:    ${MAGENTA}$APP_DIR/screenshots/${NC}"
-echo -e "${CYAN}│${NC} Test Results:   ${MAGENTA}$APP_DIR/test-results/${NC}"
-echo -e "${CYAN}│${NC} Backend Log:    ${MAGENTA}$PROJECT_ROOT/e2e/backend.log${NC}"
-echo -e "${CYAN}│${NC} Frontend Log:   ${MAGENTA}$PROJECT_ROOT/e2e/frontend.log${NC}"
+echo -e "${CYAN}│${NC} Screenshots:    ${MAGENTA}$APP_DIR/e2e/screenshots/${NC}"
+echo -e "${CYAN}│${NC} Test Results:   ${MAGENTA}$APP_DIR/e2e/test-results/${NC}"
+echo -e "${CYAN}│${NC} Backend Log:    ${MAGENTA}$PROJECT_ROOT/backend.log${NC}"
+echo -e "${CYAN}│${NC} Frontend Log:   ${MAGENTA}$PROJECT_ROOT/frontend.log${NC}"
 echo -e "${CYAN}└─────────────────────────────────────────────────────────────────┘${NC}"
 echo ""
 

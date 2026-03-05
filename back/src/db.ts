@@ -1,51 +1,29 @@
-import { Database } from 'bun:sqlite';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
-import fs from 'fs';
+/**
+ * Módulo db.ts - Wrapper para compatibilidade
+ *
+ * ATENÇÃO: Este arquivo existe apenas para compatibilidade com código legado.
+ * Todo o código novo deve usar diretamente: import { getDb } from './db-provider';
+ *
+ * Para migrar código existente:
+ * - Onde usa: import { db } from './db';
+ * - Mude para: import { getDb } from './db-provider';
+ *              const db = getDb();
+ *
+ * IMPORTANTE: Não exportamos mais `db` como constante para evitar
+ * inicialização prematura do banco de dados antes de DATABASE_PATH ser definido.
+ */
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
+import { dbProvider, initDatabase as initDbProvider, getDb } from './db-provider';
 
-// Em produção (container Docker), usa /app/data
-// Em desenvolvimento, usa o diretório data local
-const isProduction = process.env.NODE_ENV === 'production';
-const DB_PATH = isProduction
-  ? '/app/data/marcionatural.db'
-  : join(__dirname, '..', 'data', 'marcionatural.db');
+// Exporta função getDb para lazy initialization
+// Isso garante que o banco só seja criado quando realmente necessário,
+// após as variáveis de ambiente estarem configuradas
+export { getDb };
 
-// Garante que o diretório data existe
-const dataDir = isProduction ? '/app/data' : join(__dirname, '..', 'data');
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
+// Exporta função de inicialização
+export function initDatabase(): void {
+  initDbProvider();
 }
 
-// Abre o banco de dados
-const db = new Database(DB_PATH);
-
-// Configura para retornar objetos como resultado
-db.exec('PRAGMA journal_mode = WAL');
-
-export function initDatabase() {
-  // Lê e executa o schema
-  if(isProduction) {return;}
-  const schemaPath = join(__dirname, 'schema.sql');
-  const schema = fs.readFileSync(schemaPath, 'utf-8');
-  db.exec(schema);
-
-  // Lê e executa os seeds
-  const seedsPath = join(__dirname, 'seeds.sql');
-  const seeds = fs.readFileSync(seedsPath, 'utf-8');
-  
-  // Executa cada statement separadamente
-  const statements = seeds.split(';').filter(s => s.trim().length > 0);
-  for (const statement of statements) {
-    try {
-      db.exec(statement);
-    } catch (e) {
-      // Ignora erros de inserts duplicados
-    }
-  }
-
-  console.log('Banco de dados inicializado com sucesso!');
-}
-
-export { db };
+// Re-exporta dbProvider para quem quiser usar diretamente
+export { dbProvider } from './db-provider';

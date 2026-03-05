@@ -14,7 +14,7 @@
     "e2e:headed": "bun playwright test --headed",
     "e2e:debug": "bun playwright test --debug",
     "e2e:report": "bun playwright show-report playwright-report",
-    "e2e:clean": "rm -rf test-results screenshots/*/*.png playwright-report",
+    "e2e:clean": "rm -rf e2e/test-results e2e/screenshots/*/*.png playwright-report",
     "e2e:full": "bash ../scripts/run-e2e-tests.sh",
     "e2e:dev": "bash ../scripts/run-e2e-dev.sh",
     "e2e:ci": "bash ../scripts/run-e2e-ci.sh"
@@ -37,6 +37,7 @@
     "@vue/tsconfig": "^0.8.1",
     "autoprefixer": "^10.4.27",
     "npm-run-all2": "^8.0.4",
+    "playwright": "^1.58.2",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.2.1",
     "typescript": "~5.9.3",

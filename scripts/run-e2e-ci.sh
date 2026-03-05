@@ -50,7 +50,7 @@ log_info "Retries: 2"
 # Limpa resultados
 log_info "Limpando resultados anteriores..."
 cd "$APP_DIR"
-rm -rf test-results
+rm -rf e2e/test-results
 rm -rf playwright-report
 
 # Seed E2E
@@ -110,11 +110,11 @@ echo -e "${BLUE}┌────────────────────�
 echo -e "${BLUE}│${NC} ${GREEN}📊 CI/CD TEST RESULTS${NC}"
 echo -e "${BLUE}├─────────────────────────────────────────────────────────────────┤${NC}"
 
-if [ -d "test-results" ]; then
-    SCREENSHOTS=$(find test-results -name "*.png" | wc -l | tr -d ' ')
+if [ -d "e2e/test-results" ]; then
+    SCREENSHOTS=$(find e2e/test-results -name "*.png" | wc -l | tr -d ' ')
     log_info "Screenshots: $SCREENSHOTS"
     
-    VIDEOS=$(find test-results -name "*.webm" | wc -l | tr -d ' ')
+    VIDEOS=$(find e2e/test-results -name "*.webm" | wc -l | tr -d ' ')
     log_info "Videos: $VIDEOS"
 fi
 

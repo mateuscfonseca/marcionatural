@@ -4,12 +4,15 @@
  * Adiciona novas colunas e tabela para o sistema de reports
  */
 
-import { db, initDatabase } from './db';
+import { getDb, initDatabase } from './db-provider';
 
 console.log('🚀 Iniciando migração do banco de dados...');
 
 // Inicializa o banco (cria se não existir)
 initDatabase();
+
+// Obtém o banco de dados
+const db = getDb();
 
 try {
   // 1. Criar tabela entry_reports (se não existir)

@@ -115,21 +115,34 @@ log_info "Este script manterá os serviços rodando após os testes"
 if [ "$CLEAN" = true ]; then
     log_info "Limpando resultados anteriores..."
     cd "$APP_DIR"
-    rm -rf test-results
-    rm -rf screenshots/success/*.png 2>/dev/null || true
-    rm -rf screenshots/error/*.png 2>/dev/null || true
+    rm -rf e2e/test-results
+    rm -rf e2e/screenshots/success/*.png 2>/dev/null || true
+    rm -rf e2e/screenshots/error/*.png 2>/dev/null || true
 fi
 
 # Seed E2E
 log_step "Executando Seed E2E"
 cd "$BACK_DIR"
-DATABASE_PATH="$TEST_DB_PATH" bun run seed-e2e
+log_info "DATABASE_PATH: $TEST_DB_PATH"
+
+# Exporta DATABASE_PATH antes de rodar seed
+export DATABASE_PATH="$TEST_DB_PATH"
+DATABASE_PATH="$DATABASE_PATH" bun run seed-e2e
 
 # Iniciar Backend
 log_step "Iniciando Backend"
 cd "$BACK_DIR"
 log_info "Backend: http://localhost:3000"
-DATABASE_PATH="$TEST_DB_PATH" bun run dev > "$PROJECT_ROOT/e2e/backend.log" 2>&1 &
+log_info "DATABASE_PATH: $TEST_DB_PATH"
+log_info "NODE_ENV: test"
+log_info "SKIP_DB_INIT: true"
+
+# Exporta variáveis para o processo filho
+export DATABASE_PATH="$TEST_DB_PATH"
+export NODE_ENV=test
+export SKIP_DB_INIT=true
+
+DATABASE_PATH="$DATABASE_PATH" NODE_ENV="$NODE_ENV" SKIP_DB_INIT="$SKIP_DB_INIT" bun run dev > "$PROJECT_ROOT/e2e/backend.log" 2>&1 &
 BACKEND_PID=$!
 log_info "Backend PID: $BACKEND_PID"
 

@@ -3,11 +3,14 @@
  * Esta migração é idempotente (pode ser executada múltiplas vezes)
  */
 
-import { db } from './db';
+import { getDb } from './db-provider';
 
 console.log('🔄 Iniciando migração: Adicionar coluna entry_date...');
 
 try {
+  // Obtém o banco de dados
+  const db = getDb();
+
   // Verifica se a coluna já existe
   const tableInfo = db.prepare("PRAGMA table_info(user_entries)").all() as Array<{ name: string }>;
   const hasEntryDate = tableInfo.some(col => col.name === 'entry_date');

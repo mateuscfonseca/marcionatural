@@ -14,10 +14,27 @@ import timelineRoutes from './routes/timeline';
 import { join } from 'path';
 import { existsSync } from 'fs';
 
-// Inicializa banco de dados (schema + seeds)
-initDatabase();
+// Determina se deve executar initDatabase
+// Default: apenas em development (não em testes ou produção)
+const isDev = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
+const shouldSkip = process.env.SKIP_DB_INIT === 'true';
+const shouldInit = isDev && !shouldSkip;
 
-// Executa migrações pendentes
+console.log('\n🔐 [index.ts] Variáveis de ambiente:');
+console.log(`   NODE_ENV: ${process.env.NODE_ENV || 'not set'}`);
+console.log(`   DATABASE_PATH: ${process.env.DATABASE_PATH || 'not set'}`);
+console.log(`   SKIP_DB_INIT: ${process.env.SKIP_DB_INIT || 'not set'}`);
+console.log(`   shouldInit: ${shouldInit}\n`);
+
+if (shouldInit) {
+  console.log('🌱 Executando initDatabase (dev mode)');
+  initDatabase();
+} else {
+  console.log('⏭️  Skipando initDatabase');
+}
+
+// Executa migrações pendentes (sempre necessário, mesmo em teste)
+console.log('🔄 Executando MigrationManager.runAll()...');
 MigrationManager.runAll();
 
 const app = new Hono();
