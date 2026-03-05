@@ -5,8 +5,10 @@
  * Uso: bun run seed-dev
  */
 
-import { db } from '../db';
+import { getDb } from '../db-provider';
 import bcrypt from 'bcryptjs';
+
+const db = getDb();
 
 // Configuração de usuários
 const USERS = [
