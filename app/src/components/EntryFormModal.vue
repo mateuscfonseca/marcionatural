@@ -5,6 +5,7 @@ import type { UserEntry, ActivityType } from '@/types';
 import BaseModal from './BaseModal.vue';
 import { useToast } from '@/composables/useToast';
 import { createApiErrorHandler } from '@/utils/handleApiError';
+import { sanitizeId } from '@/utils/sanitize';
 
 const props = defineProps<{
   modelValue: boolean;
@@ -20,8 +21,6 @@ const emit = defineEmits<{
 
 const { success, error } = useToast();
 const handleApiError = createApiErrorHandler();
-
-// Form state
 const selectedActivityType = ref<number | null>(null);
 const description = ref('');
 const durationMinutes = ref<number | undefined>(undefined);
@@ -131,7 +130,7 @@ async function handleSubmit() {
     data-testid="entry-form-modal"
     @update:model-value="$emit('update:modelValue', $event)"
   >
-    <form @submit.prevent="handleSubmit" class="space-y-4" [data-testid="entry-form-modal"]>
+    <form @submit.prevent="handleSubmit" class="space-y-4">
       <!-- Tipo de Atividade -->
       <div v-if="showActivityTypeSelect">
         <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -144,7 +143,7 @@ async function handleSubmit() {
           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-sm sm:text-base"
         >
           <option value="" disabled>Selecione...</option>
-          <option v-for="type in activityTypes" :key="type.id" :value="type.id" :data-testid="`activity-type-option-${type.name}`">
+          <option v-for="type in activityTypes" :key="type.id" :value="type.id" :data-testid="`activity-type-option-${sanitizeId(type.name)}`">
             {{ type.name }} ({{ type.is_positive ? '+' : '' }}{{ type.base_points }} pts)
           </option>
         </select>

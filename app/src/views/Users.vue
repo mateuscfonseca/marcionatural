@@ -135,6 +135,7 @@ onMounted(loadUsers);
               <tr
                 v-for="user in users"
                 :key="user.id"
+                :data-testid="`user-card-${user.id}`"
                 class="hover:bg-gray-50 transition-colors"
                 :class="{ 'bg-gray-100': isDeleted(user) }"
               >
@@ -202,6 +203,7 @@ onMounted(loadUsers);
         <div
           v-for="user in users"
           :key="user.id"
+          :data-testid="`user-card-${user.id}`"
           class="bg-white rounded-xl shadow-sm border p-4 hover:shadow-md transition-shadow"
           :class="{ 'bg-gray-50': isDeleted(user) }"
         >

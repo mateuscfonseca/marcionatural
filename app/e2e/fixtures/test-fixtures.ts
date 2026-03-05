@@ -1,11 +1,24 @@
 /**
  * Fixtures e utilitários para testes E2E
- * 
+ *
  * Fornece autenticação automática e funções utilitárias
  * para reutilização em todos os testes
  */
 
 import { test as base, expect, Page, Locator } from '@playwright/test';
+
+/**
+ * Sanitiza nomes para uso em seletores data-testid
+ * Remove acentos e caracteres especiais, substitui espaços por hífens
+ */
+function sanitizeId(name: string): string {
+  return name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Remove acentos
+    .replace(/[^a-z0-9]+/g, '-')      // Substitui caracteres não alfanuméricos por hífen
+    .replace(/^-+|-+$/g, '');         // Remove hífens das extremidades
+}
 
 // Dados de usuários de teste
 export const TEST_USERS = {
@@ -100,7 +113,7 @@ export async function createEntry(
   
   // Seleciona tipo de atividade
   await page.click('[data-testid="activity-type-select"]');
-  await page.click(`[data-testid="activity-type-option-${options.type}"]`);
+  await page.click(`[data-testid="activity-type-option-${sanitizeId(options.type)}"]`);
   
   // Preenche descrição
   await page.fill('[data-testid="description-input"]', options.description);

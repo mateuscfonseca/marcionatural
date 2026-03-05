@@ -210,6 +210,7 @@ onUnmounted(() => {
             <tr
               v-for="(user, index) in leaderboard"
               :key="user.id"
+              :data-testid="`user-card-${user.id}`"
               class="hover:bg-gray-50 transition-colors"
               :class="{ 'bg-yellow-50': index === 0, 'bg-gray-50': index === 1, 'bg-orange-50': index === 2 }"
             >
@@ -260,6 +261,7 @@ onUnmounted(() => {
         <div
           v-for="(user, index) in leaderboard"
           :key="user.id"
+          :data-testid="`user-card-${user.id}`"
           class="p-4 hover:bg-gray-50 transition-colors"
           :class="{ 'bg-yellow-50': index === 0, 'bg-gray-50': index === 1, 'bg-orange-50': index === 2 }"
         >

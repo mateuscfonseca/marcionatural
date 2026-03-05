@@ -67,7 +67,7 @@ test.describe('Entradas - CRUD', () => {
     // Preenche formulário
     await logStep(testInfo, 'Selecionando tipo de atividade', '📝');
     await page.click('[data-testid="activity-type-select"]');
-    await page.click('[data-testid="activity-type-option-Alimentacao Limpa"]');
+    await page.click('[data-testid="activity-type-option-alimentacao-limpa"]');
     await takeScreenshot(page, testInfo, { label: 'activity-type-selected', type: 'step' });
 
     await fillWithLog(page, testInfo, '[data-testid="description-input"]', 'Cafe da manha saudavel - teste E2E', 'Descricao');
