@@ -27,11 +27,23 @@ export interface TimelineEntry {
 }
 
 /**
- * Converte data do SQLite para ISO 8601 com Z (UTC)
+ * Converte data do SQLite para ISO 8601 UTC
+ * O SQLite retorna "YYYY-MM-DD HH:MM:SS" sem timezone.
+ * Como o servidor roda em UTC, tratamos como UTC e convertemos para ISO 8601.
+ * O formato ISO 8601 com 'Z' permite que o front converta para a timezone local do usuário.
  */
 function toUTCDate(dateStr: string | null): string | null {
   if (!dateStr) return null;
-  return new Date(dateStr + 'Z').toISOString();
+  // Parse da data do SQLite como UTC e converte para ISO 8601
+  const [datePart, timePart] = dateStr.split(' ');
+  if (!timePart) return new Date(dateStr).toISOString();
+  
+  // Cria data UTC explicitamente para evitar problemas de timezone
+  const [year, month, day] = datePart.split('-').map(Number);
+  const [hour, minute, second] = timePart.split(':').map(Number);
+  
+  const utcDate = new Date(Date.UTC(year, month - 1, day, hour, minute, second));
+  return utcDate.toISOString();
 }
 
 /**

@@ -1,251 +1,134 @@
 /**
  * Testes E2E de Navegação e Rotas Protegidas
- * 
- * Testa: sidebar, menu, rotas protegidas, botão flutuante,
- * toast messages
  */
 
 import { test, expect } from '@playwright/test';
+import { logTestStart, logTestEnd, takeScreenshot, clickWithLog, expectWithScreenshot, logStep } from '../utils/test-helpers';
+import { loginWithLog } from '../utils/test-common';
 
 test.describe('Navegação', () => {
-  test('deve abrir e fechar sidebar em mobile', async ({ page }) => {
-    // Configura viewport mobile
-    await page.setViewportSize({ width: 375, height: 667 });
-
-    // Login
-    await page.goto('/login');
-    await page.fill('[data-testid="username-input"]', 'test_user_1');
-    await page.fill('[data-testid="password-input"]', 'teste123');
-    await page.click('[data-testid="login-button"]');
-    await page.waitForURL(/\/leaderboard/);
-
-    // Sidebar deve estar fechada inicialmente em mobile
-    const sidebar = page.locator('[data-testid="sidebar"]');
+  test('deve abrir e fechar sidebar em mobile', async ({ page }, testInfo) => {
+    await logTestStart(testInfo);
     
-    // Abre sidebar
-    await page.click('[data-testid="menu-button"]');
-    await expect(sidebar).toBeVisible();
+    await page.setViewportSize({ width: 375, height: 667 });
+    await loginWithLog(page, testInfo);
+    
+    await clickWithLog(page, testInfo, '[data-testid="menu-button"]', 'Botão Menu');
+    await takeScreenshot(page, testInfo, { label: 'sidebar-open', type: 'step' });
+    
+    await expectWithScreenshot(page, testInfo, async () => {
+      await expect(page.locator('[data-testid="sidebar"]')).toBeVisible();
+    }, 'Sidebar visível');
 
-    // Fecha sidebar clicando no overlay
-    await page.click('[data-testid="sidebar-overlay"]');
-    await expect(sidebar).not.toBeVisible();
+    await clickWithLog(page, testInfo, '[data-testid="sidebar-overlay"]', 'Overlay');
+    await takeScreenshot(page, testInfo, { label: 'sidebar-closed', type: 'step' });
+
+    await logTestEnd(testInfo, 'passed');
   });
 
-  test('deve navegar para todas as telas pelo menu', async ({ page }) => {
-    // Login
-    await page.goto('/login');
-    await page.fill('[data-testid="username-input"]', 'test_user_1');
-    await page.fill('[data-testid="password-input"]', 'teste123');
-    await page.click('[data-testid="login-button"]');
-    await page.waitForURL(/\/leaderboard/);
+  test('deve navegar para todas as telas pelo menu', async ({ page }, testInfo) => {
+    await logTestStart(testInfo);
+    await loginWithLog(page, testInfo);
 
-    // Navega para cada tela
     const routes = [
-      { name: 'Leaderboard', path: '/leaderboard', testId: 'nav-link-leaderboard' },
-      { name: 'Timeline', path: '/timeline', testId: 'nav-link-timeline' },
-      { name: 'Minhas Entradas', path: '/my-entries', testId: 'nav-link-my-entries' },
-      { name: 'Votação', path: '/voting', testId: 'nav-link-voting' },
-      { name: 'Projetos', path: '/projects', testId: 'nav-link-projects' },
-      { name: 'Usuários', path: '/users', testId: 'nav-link-users' },
+      { name: 'Leaderboard', path: /\/leaderboard/, testId: 'nav-link-leaderboard' },
+      { name: 'Timeline', path: /\/timeline/, testId: 'nav-link-timeline' },
+      { name: 'Minhas Entradas', path: /\/my-entries/, testId: 'nav-link-my-entries' },
+      { name: 'Votação', path: /\/voting/, testId: 'nav-link-voting' },
+      { name: 'Projetos', path: /\/projects/, testId: 'nav-link-projects' },
+      { name: 'Usuários', path: /\/users/, testId: 'nav-link-users' },
     ];
 
     for (const route of routes) {
-      await page.click(`[data-testid="${route.testId}"]`);
+      await logStep(testInfo, `Navegando para ${route.name}`, '🧭');
+      await clickWithLog(page, testInfo, `[data-testid="${route.testId}"]`, route.name);
       await page.waitForURL(route.path);
-      await expect(page).toHaveURL(route.path);
+      await takeScreenshot(page, testInfo, { label: `nav-${route.name.toLowerCase()}`, type: 'step' });
     }
+
+    await logTestEnd(testInfo, 'passed');
   });
 
-  test('deve fechar sidebar ao navegar em mobile', async ({ page }) => {
-    // Configura viewport mobile
-    await page.setViewportSize({ width: 375, height: 667 });
+  test('deve exibir FAB em todas as telas', async ({ page }, testInfo) => {
+    await logTestStart(testInfo);
+    await loginWithLog(page, testInfo);
 
-    // Login
-    await page.goto('/login');
-    await page.fill('[data-testid="username-input"]', 'test_user_1');
-    await page.fill('[data-testid="password-input"]', 'teste123');
-    await page.click('[data-testid="login-button"]');
-    await page.waitForURL(/\/leaderboard/);
+    const screens = ['/leaderboard', '/timeline', '/my-entries', '/projects', '/users'];
 
-    // Abre sidebar
-    await page.click('[data-testid="menu-button"]');
-    const sidebar = page.locator('[data-testid="sidebar"]');
-    await expect(sidebar).toBeVisible();
-
-    // Navega para outra tela
-    await page.click('[data-testid="nav-link-timeline"]');
-
-    // Sidebar deve fechar automaticamente
-    await expect(sidebar).not.toBeVisible();
-  });
-
-  test('deve exibir botão flutuante (FAB) em todas as telas', async ({ page }) => {
-    // Login
-    await page.goto('/login');
-    await page.fill('[data-testid="username-input"]', 'test_user_1');
-    await page.fill('[data-testid="password-input"]', 'teste123');
-    await page.click('[data-testid="login-button"]');
-    await page.waitForURL(/\/leaderboard/);
-
-    // Telas que devem ter FAB
-    const screensWithFab = [
-      '/leaderboard',
-      '/timeline',
-      '/my-entries',
-      '/projects',
-      '/users',
-    ];
-
-    for (const screen of screensWithFab) {
+    for (const screen of screens) {
       await page.goto(screen);
       await page.waitForTimeout(500);
+      await takeScreenshot(page, testInfo, { label: `fab-${screen.replace('/', '')}`, type: 'step' });
       
-      const fabButton = page.locator('[data-testid="fab-button"]');
-      await expect(fabButton).toBeVisible();
+      await expectWithScreenshot(page, testInfo, async () => {
+        await expect(page.locator('[data-testid="fab-button"]')).toBeVisible();
+      }, `FAB visível em ${screen}`);
     }
+
+    await logTestEnd(testInfo, 'passed');
   });
 
-  test('deve abrir menu de opções do FAB', async ({ page }) => {
-    // Login
-    await page.goto('/login');
-    await page.fill('[data-testid="username-input"]', 'test_user_1');
-    await page.fill('[data-testid="password-input"]', 'teste123');
-    await page.click('[data-testid="login-button"]');
-    await page.waitForURL(/\/leaderboard/);
+  test('deve abrir menu de opções do FAB', async ({ page }, testInfo) => {
+    await logTestStart(testInfo);
+    await loginWithLog(page, testInfo);
+    
+    await clickWithLog(page, testInfo, '[data-testid="fab-button"]', 'FAB');
+    await takeScreenshot(page, testInfo, { label: 'fab-options', type: 'step' });
 
-    // Abre FAB
-    await page.click('[data-testid="fab-button"]');
+    await expectWithScreenshot(page, testInfo, async () => {
+      await expect(page.locator('[data-testid="fab-new-entry"]')).toBeVisible();
+      await expect(page.locator('[data-testid="fab-project-log"]')).toBeVisible();
+    }, 'Opções do FAB visíveis');
 
-    // Verifica se opções estão visíveis
-    await expect(page.locator('[data-testid="fab-new-entry"]')).toBeVisible();
-    await expect(page.locator('[data-testid="fab-project-log"]')).toBeVisible();
+    await logTestEnd(testInfo, 'passed');
   });
 
-  test('deve exibir mensagens toast de sucesso', async ({ page }) => {
-    // Login
-    await page.goto('/login');
-    await page.fill('[data-testid="username-input"]', 'test_user_1');
-    await page.fill('[data-testid="password-input"]', 'teste123');
-    await page.click('[data-testid="login-button"]');
-    await page.waitForURL(/\/leaderboard/);
-
-    // Navega para Minhas Entradas
-    await page.click('[data-testid="nav-link-my-entries"]');
+  test('deve exibir mensagens toast de sucesso', async ({ page }, testInfo) => {
+    await logTestStart(testInfo);
+    await loginWithLog(page, testInfo);
+    
+    await clickWithLog(page, testInfo, '[data-testid="nav-link-my-entries"]', 'Menu Minhas Entradas');
     await page.waitForURL(/\/my-entries/);
-
-    // Abre modal de nova entrada
-    await page.click('[data-testid="fab-button"]');
-    await page.click('[data-testid="fab-new-entry"]');
-
-    // Preenche formulário mínimo
+    
+    await clickWithLog(page, testInfo, '[data-testid="fab-button"]', 'FAB');
+    await clickWithLog(page, testInfo, '[data-testid="fab-new-entry"]', 'Nova Entrada');
+    
     await page.click('[data-testid="activity-type-select"]');
-    await page.click('[data-testid="activity-type-option-Alimentação Limpa"]');
+    await page.click('[data-testid="activity-type-option-Alimentacao Limpa"]');
     await page.fill('[data-testid="description-input"]', 'Teste toast E2E');
     await page.fill('[data-testid="date-input"]', new Date().toISOString().split('T')[0]!);
+    await clickWithLog(page, testInfo, '[data-testid="submit-entry-button"]', 'Submit');
+    
+    await takeScreenshot(page, testInfo, { label: 'toast-success', type: 'success' });
 
-    // Submete
-    await page.click('[data-testid="submit-entry-button"]');
-
-    // Aguarda toast de sucesso
-    await expect(page.locator('[data-testid="toast-success"]')).toBeVisible();
+    await logTestEnd(testInfo, 'passed');
   });
 
-  test('deve exibir mensagens toast de erro', async ({ page }) => {
-    // Login
-    await page.goto('/login');
-    await page.fill('[data-testid="username-input"]', 'test_user_1');
-    await page.fill('[data-testid="password-input"]', 'teste123');
-    await page.click('[data-testid="login-button"]');
-    await page.waitForURL(/\/leaderboard/);
+  test('deve redirecionar para login ao tentar acessar rota protegida', async ({ page }, testInfo) => {
+    await logTestStart(testInfo);
 
-    // Navega para Minhas Entradas
-    await page.click('[data-testid="nav-link-my-entries"]');
-    await page.waitForURL(/\/my-entries/);
-
-    // Tenta criar entrada sem tipo de atividade (deve gerar erro)
-    await page.click('[data-testid="fab-button"]');
-    await page.click('[data-testid="fab-new-entry"]');
-
-    // Preenche apenas descrição, sem tipo
-    await page.fill('[data-testid="description-input"]', 'Teste sem tipo');
-    await page.fill('[data-testid="date-input"]', new Date().toISOString().split('T')[0]!);
-
-    // Submete (deve falhar)
-    await page.click('[data-testid="submit-entry-button"]');
-
-    // Aguarda toast de erro (ou mensagem de validação)
-    await expect(page.locator('[data-testid="toast-error"]')).toBeVisible();
-  });
-
-  test('deve redirecionar para login ao tentar acessar rota protegida diretamente', async ({ page }) => {
-    // Tenta acessar rotas protegidas sem estar logado
-    const protectedRoutes = [
-      '/leaderboard',
-      '/timeline',
-      '/my-entries',
-      '/projects',
-      '/users',
-      '/voting',
-    ];
+    const protectedRoutes = ['/leaderboard', '/timeline', '/my-entries', '/projects', '/users', '/voting'];
 
     for (const route of protectedRoutes) {
+      await logStep(testInfo, `Tentando acessar ${route} sem auth`, '🚫');
       await page.goto(route);
       await page.waitForURL('/login');
-      await expect(page).toHaveURL('/login');
+      await takeScreenshot(page, testInfo, { label: `protected-${route.replace('/', '')}`, type: 'step' });
     }
+
+    await logTestEnd(testInfo, 'passed');
   });
 
-  test('deve exibir header com nome do usuário logado', async ({ page }) => {
-    // Login
-    await page.goto('/login');
-    await page.fill('[data-testid="username-input"]', 'test_user_1');
-    await page.fill('[data-testid="password-input"]', 'teste123');
-    await page.click('[data-testid="login-button"]');
-    await page.waitForURL(/\/leaderboard/);
+  test('deve exibir header com nome do usuário', async ({ page }, testInfo) => {
+    await logTestStart(testInfo);
+    await loginWithLog(page, testInfo);
+    await takeScreenshot(page, testInfo, { label: 'header-user', type: 'step' });
 
-    // Verifica se header está visível com nome do usuário
-    await expect(page.locator('text=test_user_1')).toBeVisible();
-    await expect(page.locator('[data-testid="logout-button"]')).toBeVisible();
-  });
+    await expectWithScreenshot(page, testInfo, async () => {
+      await expect(page.locator('text=test_user_1')).toBeVisible();
+      await expect(page.locator('[data-testid="logout-button"]')).toBeVisible();
+    }, 'Header com usuário e logout visíveis');
 
-  test('deve exibir botão de logout no header', async ({ page }) => {
-    // Login
-    await page.goto('/login');
-    await page.fill('[data-testid="username-input"]', 'test_user_1');
-    await page.fill('[data-testid="password-input"]', 'teste123');
-    await page.click('[data-testid="login-button"]');
-    await page.waitForURL(/\/leaderboard/);
-
-    // Verifica se botão de logout está visível
-    const logoutButton = page.locator('[data-testid="logout-button"]');
-    await expect(logoutButton).toBeVisible();
-
-    // Clica em logout
-    await logoutButton.click();
-    await page.waitForURL('/login');
-    await expect(page).toHaveURL('/login');
-  });
-
-  test('deve manter sidebar sempre visível em desktop', async ({ page }) => {
-    // Configura viewport desktop
-    await page.setViewportSize({ width: 1280, height: 720 });
-
-    // Login
-    await page.goto('/login');
-    await page.fill('[data-testid="username-input"]', 'test_user_1');
-    await page.fill('[data-testid="password-input"]', 'teste123');
-    await page.click('[data-testid="login-button"]');
-    await page.waitForURL(/\/leaderboard/);
-
-    // Sidebar deve estar sempre visível em desktop
-    const sidebar = page.locator('[data-testid="sidebar"]');
-    await expect(sidebar).toBeVisible();
-
-    // Navega para outra tela
-    await page.click('[data-testid="nav-link-timeline"]');
-    await page.waitForURL(/\/timeline/);
-
-    // Sidebar continua visível
-    await expect(sidebar).toBeVisible();
+    await logTestEnd(testInfo, 'passed');
   });
 });

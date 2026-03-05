@@ -9,11 +9,15 @@
     "build-only": "vite build",
     "preview": "vite preview",
     "type-check": "vue-tsc --build",
-    "e2e": "cd .. && bun playwright test --config=e2e/playwright.config.ts",
-    "e2e:ui": "cd .. && bun playwright test --ui --config=e2e/playwright.config.ts",
-    "e2e:headed": "cd .. && bun playwright test --headed --config=e2e/playwright.config.ts",
-    "e2e:debug": "cd .. && bun playwright test --debug --config=e2e/playwright.config.ts",
-    "e2e:report": "cd .. && bun playwright show-report e2e/playwright-report"
+    "e2e": "bun playwright test",
+    "e2e:ui": "bun playwright test --ui",
+    "e2e:headed": "bun playwright test --headed",
+    "e2e:debug": "bun playwright test --debug",
+    "e2e:report": "bun playwright show-report playwright-report",
+    "e2e:clean": "rm -rf test-results screenshots/*/*.png playwright-report",
+    "e2e:full": "bash ../scripts/run-e2e-tests.sh",
+    "e2e:dev": "bash ../scripts/run-e2e-dev.sh",
+    "e2e:ci": "bash ../scripts/run-e2e-ci.sh"
   },
   "dependencies": {
     "chart.js": "^4.5.1",

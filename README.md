@@ -375,6 +375,40 @@ docker-compose down
 
 O projeto utiliza **Playwright** para testes de interface automatizados, rodando em modo headless com Chromium.
 
+### 📸 Logs e Screenshots Automáticos
+
+Todos os testes geram automaticamente:
+
+- **📸 Screenshots** em cada passo importante (página completa)
+- **🎬 Vídeos** de toda a execução do teste (1280x720)
+- **🔍 Traces** para debug em caso de falha
+- **📝 Logs detalhados** no console com cores e emojis
+
+#### Estrutura de Arquivos Gerados
+
+```
+e2e/
+├── test-results/           # Resultados por teste
+│   ├── auth-login-success/
+│   │   ├── 00-initial-state-2024-01-01T12_00_00.png
+│   │   ├── 01-login-page-2024-01-01T12_00_01.png
+│   │   ├── video.webm
+│   │   └── trace.zip
+│   └── entries-create-failure/
+│       ├── assert-fail-validacao-2024-01-01T12_00_02.png
+│       └── video.webm
+├── screenshots/            # Screenshots organizados
+│   ├── success/            # Screenshots de testes bem-sucedidos
+│   │   ├── login-success-2024-01-01T12_00_00.png
+│   │   └── create-entry-2024-01-01T12_00_01.png
+│   └── error/              # Screenshots de erros
+│       ├── validation-fail-2024-01-01T12_00_02.png
+│       └── assert-error-2024-01-01T12_00_03.png
+└── playwright-report/      # Relatório HTML rico
+    ├── index.html
+    └── ...
+```
+
 ### Estrutura de Testes
 
 ```
@@ -388,8 +422,12 @@ e2e/
 │   ├── projects.spec.ts      # Projetos pessoais, registro de tempo
 │   ├── timeline.spec.ts      # Timeline, ordenação, filtros
 │   └── navigation.spec.ts    # Sidebar, menu, FAB, toast messages
+├── utils/
+│   ├── test-helpers.ts       # Helpers para screenshots e logs
+│   └── test-common.ts        # Funções reutilizáveis (login, navigate)
 ├── fixtures/
 │   └── test-fixtures.ts      # Fixtures reutilizáveis
+├── custom-reporter.ts        # Reporter personalizado com logs
 └── playwright.config.ts      # Configuração do Playwright
 ```
 
@@ -414,7 +452,7 @@ DATABASE_PATH=./data/test.db bun run seed-e2e
 #### 2. Rodar Testes
 
 ```bash
-# Todos os testes (headless)
+# Todos os testes (headless) - gera screenshots, vídeos e logs
 cd app
 bun run e2e
 
@@ -429,17 +467,270 @@ bun run e2e:debug
 
 # Ver relatório HTML
 bun run e2e:report
+
+# Limpar resultados anteriores
+bun run e2e:clean
 ```
 
 ### Scripts Disponíveis
 
 | Script | Descrição |
 |--------|-----------|
-| `bun run e2e` | Roda todos os testes em modo headless |
+| `bun run e2e` | Roda todos os testes (headless) com screenshots e vídeos |
 | `bun run e2e:ui` | Abre interface interativa do Playwright |
 | `bun run e2e:headed` | Roda testes com browser visível |
 | `bun run e2e:debug` | Debug passo-a-passo com inspector |
 | `bun run e2e:report` | Abre relatório HTML dos testes |
+| `bun run e2e:clean` | Limpa resultados anteriores |
+| `bun run e2e:full` | **Script completo**: prepara ambiente, roda testes e gera relatório |
+| `bun run e2e:dev` | **Modo dev**: roda testes e mantém serviços rodando |
+| `bun run e2e:ci` | **Modo CI/CD**: headless, sem abrir relatório, com retries |
+
+### 🚀 Scripts Automatizados
+
+Para facilitar o uso, existem scripts shell que automatizam todo o processo:
+
+#### 1. Script Completo (Recomendado)
+
+```bash
+# Roda tudo automaticamente:
+# - Limpa resultados anteriores
+# - Executa seed E2E com migrations
+# - Inicia backend e frontend
+# - Aguarda serviços estarem prontos
+# - Roda testes
+# - Gera relatório
+# - Abre relatório no browser
+# - Para serviços
+
+./scripts/run-e2e-tests.sh
+
+# Ou via npm:
+bun run e2e:full
+```
+
+**Opções do script:**
+
+```bash
+# Browser visível
+./scripts/run-e2e-tests.sh --headed
+
+# Debug passo-a-passo
+./scripts/run-e2e-tests.sh --debug
+
+# Interface interativa
+./scripts/run-e2e-tests.sh --ui
+
+# Rodar apenas testes específicos
+./scripts/run-e2e-tests.sh --spec=tests/auth.spec.ts
+
+# Manter serviços rodando após testes
+./scripts/run-e2e-tests.sh --keep-running
+
+# Não limpar resultados anteriores
+./scripts/run-e2e-tests.sh --no-clean
+
+# Não abrir relatório automaticamente
+./scripts/run-e2e-tests.sh --no-open
+
+# Ajuda
+./scripts/run-e2e-tests.sh --help
+```
+
+#### 2. Modo Desenvolvimento
+
+Ideal para desenvolver testes. Mantém os serviços rodando após os testes.
+
+```bash
+./scripts/run-e2e-dev.sh
+
+# Ou via npm:
+bun run e2e:dev
+
+# Com teste específico
+./scripts/run-e2e-dev.sh --spec=tests/auth.spec.ts
+```
+
+**Vantagens:**
+- ✅ Serviços permanecem rodando
+- ✅ Rode testes específicos rapidamente
+- ✅ Faça alterações no código e teste novamente
+- ✅ Economiza tempo de inicialização
+
+#### 3. Modo CI/CD
+
+Para integração contínua. Headless, sem abrir relatório, com retries.
+
+```bash
+./scripts/run-e2e-ci.sh
+
+# Ou via npm:
+bun run e2e:ci
+```
+
+**Características:**
+- 🤖 Headless (sem browser visível)
+- 🔁 2 retries em caso de falha
+- 📊 Gera relatório JUnit
+- 🚫 Não abre relatório automaticamente
+- ⚡ Workers: 1 (para estabilidade)
+
+### 📋 Fluxo Completo do Script
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  ./scripts/run-e2e-tests.sh                                 │
+├─────────────────────────────────────────────────────────────┤
+│  1. ✅ Verifica pré-requisitos (bun, node)                  │
+│  2. 🧹 Limpa resultados anteriores                          │
+│  3. 🌱 Executa seed E2E com migrations                      │
+│  4. 🚀 Inicia backend (http://localhost:3000)               │
+│  5. 🚀 Inicia frontend (http://localhost:5173)              │
+│  6. ⏳ Aguarda serviços estarem prontos                     │
+│  7. 🧪 Roda testes E2E                                      │
+│  8. 📊 Gera relatório HTML                                  │
+│  9. 🌐 Abre relatório no browser                            │
+│ 10. 📈 Mostra resumo final                                  │
+│ 11. 🛑 Para serviços                                        │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 📊 Exemplo de Saída do Script
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📍 Verificando pré-requisitos
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ℹ️  bun encontrado: 1.3.0
+✅ bun encontrado
+ℹ️  node encontrado: v20.19.0
+✅ node encontrado
+✅ Diretório do projeto confirmado
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📍 Limpando resultados anteriores
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ℹ️  Limpando resultados anteriores...
+✅ Resultados limpos
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📍 Executando Seed E2E
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ℹ️  Rodando seed com migrations...
+[seed output...]
+✅ Seed E2E executado com sucesso
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📍 Iniciando Backend
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ℹ️  Iniciando backend em background...
+ℹ️  Backend iniciado (PID: 12345)
+ℹ️  Aguardando backend estar pronto...
+✅ Backend pronto!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📍 Iniciando Frontend
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ℹ️  Iniciando frontend em background...
+ℹ️  Frontend iniciado (PID: 12346)
+ℹ️  Aguardando frontend estar pronto...
+✅ Frontend pronto!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📍 Executando Testes E2E
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[Playwright test output...]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📍 Gerando Relatório
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ℹ️  Gerando relatório HTML...
+✅ Todos os testes passaram!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📍 Resumo da Execução
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+┌─────────────────────────────────────────────────────────────┐
+│ 📊 RESULTADOS DOS TESTES E2E
+├─────────────────────────────────────────────────────────────┤
+│ ℹ️  Screenshots gerados: 150
+│ ℹ️  Screenshots de sucesso: 140
+│ ℹ️  Screenshots de erro: 10
+│ ℹ️  Vídeos gerados: 73
+├─────────────────────────────────────────────────────────────┤
+│ 📁 ARQUIVOS GERADOS
+├─────────────────────────────────────────────────────────────┤
+│ Relatório HTML: /path/to/project/e2e/playwright-report
+│ Screenshots:    /path/to/project/e2e/screenshots
+│ Test Results:   /path/to/project/e2e/test-results
+└─────────────────────────────────────────────────────────────┘
+
+✅ Script concluído!
+🎉 Todos os testes passaram!
+```
+
+### 📊 Exemplo de Saída no Console
+
+```
+======================================================================
+🚀 MARCIO NATURAL - TESTES E2E
+======================================================================
+📊 Total de testes: 73
+🌐 Base URL: http://localhost:9000
+🔧 Workers: 1
+======================================================================
+
+─────────────────────────────────────────────────────────────────
+🧪 [TESTE] deve realizar login com credenciais válidas
+   📁 tests/auth.spec.ts
+   🏷️  Tags: nenhuma
+
+⏩ [PASSO] Navegando para: Página de Login
+📸 [STEP] nav-Pagina-de-Login
+   📁 Test: e2e/test-results/auth-login-success/...
+   📁 Organized: e2e/screenshots/success/...
+
+⏩ [PASSO] Preenchendo Username: "test_user_1"
+📸 [STEP] fill-username-input
+⏩ [PASSO] Preenchendo Password: "teste123"
+📸 [STEP] fill-password-input
+⏩ [PASSO] Clicando em: Botão Login
+📸 [STEP] click-login-button
+
+✅ [SUCESSO] Login realizado com sucesso!
+
+======================================================================
+✅ TESTE PASSED
+   Duração: 3245ms
+======================================================================
+```
+
+### 🎬 Visualizar Resultados
+
+#### Relatório HTML
+```bash
+bun run e2e:report
+# Abre e2e/playwright-report/index.html no browser
+```
+
+#### Screenshots
+- **Sucesso**: `e2e/screenshots/success/`
+- **Erro**: `e2e/screenshots/error/`
+
+#### Vídeos
+- Cada teste gera um `video.webm` em `e2e/test-results/<nome-do-teste>/`
+
+#### Traces (Debug)
+- Em caso de falha, um `trace.zip` é gerado
+- Visualize em: https://trace.playwright.dev/
 
 ### Credenciais de Teste
 

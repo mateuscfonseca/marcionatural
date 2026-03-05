@@ -1,0 +1,11 @@
+$ vite
+13:12:23 [vite] (client) Re-optimizing dependencies because lockfile has changed
+Port 5173 is in use, trying another one...
+
+  VITE v7.3.1  ready in 367 ms
+
+  ➜  Local:   http://localhost:5174/
+  ➜  Network: use --host to expose
+  ➜  Vue DevTools: Open http://localhost:5174/__devtools__/ as a separate window
+  ➜  Vue DevTools: Press Alt(⌥)+Shift(⇧)+D in App to toggle the Vue DevTools
+error: script "dev" exited with code 143

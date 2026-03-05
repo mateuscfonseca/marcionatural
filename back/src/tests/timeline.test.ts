@@ -260,6 +260,83 @@ describe('Timeline Service', () => {
 
       expect(entries[0].created_at).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z$/);
     });
+
+    test('deve converter corretamente horarios do SQLite para UTC ISO 8601', async () => {
+      // Testa conversao de datas com horarios especificos
+      db.run(`
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date, created_at)
+        VALUES (?, ?, ?, ?, ?)
+      `, [testUserId, SEED_IDS.activityTypes.alimentacaoLimpa, 'Teste meio-dia', '2024-01-15', '2024-01-15 12:00:00']);
+
+      db.run(`
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date, created_at)
+        VALUES (?, ?, ?, ?, ?)
+      `, [testUserId, SEED_IDS.activityTypes.exercicioFisico, 'Teste meia-noite', '2024-01-16', '2024-01-16 00:00:00']);
+
+      db.run(`
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date, created_at)
+        VALUES (?, ?, ?, ?, ?)
+      `, [testUserId, SEED_IDS.activityTypes.alimentacaoLimpa, 'Teste fim do dia', '2024-01-17', '2024-01-17 23:59:59']);
+
+      const entries = await getTimelineEntries(50, 0);
+
+      // Verifica formato ISO 8601 com Z (UTC)
+      expect(entries[0].created_at).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z$/);
+      expect(entries[1].created_at).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z$/);
+      expect(entries[2].created_at).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z$/);
+
+      // Verifica conversao especifica dos horarios
+      const meioDiaEntry = entries.find(e => e.description === 'Teste meio-dia');
+      const meiaNoiteEntry = entries.find(e => e.description === 'Teste meia-noite');
+      const fimDiaEntry = entries.find(e => e.description === 'Teste fim do dia');
+
+      // 12:00:00 UTC deve virar 2024-01-15T12:00:00.000Z
+      expect(meioDiaEntry?.created_at).toBe('2024-01-15T12:00:00.000Z');
+
+      // 00:00:00 UTC deve virar 2024-01-16T00:00:00.000Z
+      expect(meiaNoiteEntry?.created_at).toBe('2024-01-16T00:00:00.000Z');
+
+      // 23:59:59 UTC deve virar 2024-01-17T23:59:59.000Z
+      expect(fimDiaEntry?.created_at).toBe('2024-01-17T23:59:59.000Z');
+    });
+
+    test('deve preservar minutos e segundos na conversao para UTC', async () => {
+      db.run(`
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date, created_at)
+        VALUES (?, ?, ?, ?, ?)
+      `, [testUserId, SEED_IDS.activityTypes.alimentacaoLimpa, 'Teste horario especifico', '2024-01-15', '2024-01-15 14:30:45']);
+
+      const entries = await getTimelineEntries(50, 0);
+
+      // 14:30:45 UTC deve virar 2024-01-15T14:30:45.000Z
+      expect(entries[0].created_at).toBe('2024-01-15T14:30:45.000Z');
+    });
+
+    test('deve lidar com datas sem parte de tempo (apenas data)', async () => {
+      // SQLite as vezes retorna apenas a data sem hora
+      db.run(`
+        INSERT INTO user_entries (user_id, activity_type_id, description, entry_date, created_at)
+        VALUES (?, ?, ?, ?, ?)
+      `, [testUserId, SEED_IDS.activityTypes.alimentacaoLimpa, 'Teste apenas data', '2024-01-15', '2024-01-15']);
+
+      const entries = await getTimelineEntries(50, 0);
+
+      // Deve converter mesmo sem a parte de tempo
+      expect(entries[0].created_at).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z$/);
+    });
+
+    test('deve converter corretamente logs de projetos para UTC', async () => {
+      db.run(`
+        INSERT INTO project_daily_logs (project_id, user_id, date, duration_minutes, week_number, year, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `, [testProjectIds.project1, testUserId, '2024-01-15', 60, 3, 2024, '2024-01-15 08:15:30']);
+
+      const entries = await getTimelineEntries(50, 0);
+
+      expect(entries[0].entry_type).toBe('project');
+      // 08:15:30 UTC deve virar 2024-01-15T08:15:30.000Z
+      expect(entries[0].created_at).toBe('2024-01-15T08:15:30.000Z');
+    });
   });
 
   describe('getTimelineEntriesCount', () => {
