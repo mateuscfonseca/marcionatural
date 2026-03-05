@@ -42,7 +42,7 @@ const handleNavigation = () => {
         <h1 class="text-xl font-bold">🌿 Marcio Natural</h1>
         <button
           @click="close"
-          class="lg:hidden p-2 hover:bg-gray-700 rounded-lg transition-colors"
+          class="lg:hidden p-2 hover:bg-gray-700 rounded-lg transition-colors cursor-pointer"
           aria-label="Fechar menu"
         >
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -58,7 +58,7 @@ const handleNavigation = () => {
             <router-link
               :to="item.path"
               @click="handleNavigation"
-              class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors"
+              class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors cursor-pointer"
               :class="isActive(item.path) ? 'bg-gray-700 text-green-400' : 'hover:bg-gray-700'"
             >
               <span class="text-xl">{{ item.icon }}</span>

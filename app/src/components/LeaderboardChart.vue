@@ -12,6 +12,7 @@ import {
   Legend,
   Filler,
 } from 'chart.js';
+import { schemeTableau10 } from 'd3-scale-chromatic';
 import type { LeaderboardSnapshot } from '@/types';
 import { getLeaderboardHistory } from '@/services/api';
 
@@ -35,19 +36,18 @@ const emit = defineEmits<{
 }>();
 
 const loading = ref(true);
-const selectedWeeks = ref(props.initialWeeks ?? 4);
+const selectedWeeks = ref(props.initialWeeks ?? 1);
 const history = ref<LeaderboardSnapshot[]>([]);
 
-const USER_COLORS = [
-  { border: 'rgb(59, 130, 246)', background: 'rgba(59, 130, 246, 0.1)' },
-  { border: 'rgb(239, 68, 68)', background: 'rgba(239, 68, 68, 0.1)' },
-  { border: 'rgb(34, 197, 94)', background: 'rgba(34, 197, 94, 0.1)' },
-  { border: 'rgb(249, 115, 22)', background: 'rgba(249, 115, 22, 0.1)' },
-  { border: 'rgb(168, 85, 247)', background: 'rgba(168, 85, 247, 0.1)' },
-  { border: 'rgb(236, 72, 153)', background: 'rgba(236, 72, 153, 0.1)' },
-  { border: 'rgb(20, 184, 166)', background: 'rgba(20, 184, 166, 0.1)' },
-  { border: 'rgb(245, 158, 11)', background: 'rgba(245, 158, 11, 0.1)' },
-];
+function getUserColor(index: number) {
+  const rgbColor = schemeTableau10[index % schemeTableau10.length];
+  // Converte "rgb(r, g, b)" para "rgba(r, g, b, 0.15)"
+  const background = rgbColor.replace('rgb(', 'rgba(').replace(')', ', 0.15)');
+  return {
+    border: rgbColor,
+    background,
+  };
+}
 
 const chartData = computed(() => {
   if (!history.value || history.value.length === 0) {
@@ -65,14 +65,14 @@ const chartData = computed(() => {
       if (!allUsers.has(user.id)) {
         allUsers.set(user.id, {
           username: user.username ?? 'Usuário',
-          colorIndex: allUsers.size % USER_COLORS.length,
+          colorIndex: allUsers.size,
         });
       }
     });
   });
 
   const datasets = Array.from(allUsers.entries()).map(([userId, { username, colorIndex }]) => {
-    const color = USER_COLORS[colorIndex]!;
+    const color = getUserColor(colorIndex);
     return {
       label: username,
       data: history.value.map(snapshot => {
@@ -163,54 +163,73 @@ function formatDateRange() {
 </script>
 
 <template>
-  <div class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" @click.self="emit('close')">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-      <!-- Header -->
-      <div class="p-4 sm:p-6 border-b flex items-center justify-between">
-        <div>
-          <h2 class="text-xl sm:text-2xl font-bold text-gray-800">📈 Evolução do Leaderboard</h2>
-          <p class="text-sm text-gray-600 mt-1" v-if="history && history.length > 0">
-            {{ formatDateRange() }}
-          </p>
-        </div>
-        <button
-          @click="emit('close')"
-          class="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          aria-label="Fechar"
-        >
-          <svg class="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
+  <Teleport to="body">
+    <Transition name="slide-up">
+      <div class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 sm:bg-black/50 sm:backdrop-blur-sm" @click.self="emit('close')">
+        <div class="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-[70vw] h-[calc(100vh-4rem)] sm:h-auto max-h-[90vh] overflow-hidden flex flex-col">
+          <!-- Header -->
+          <div class="p-4 sm:p-6 border-b flex items-center justify-between flex-shrink-0">
+            <div>
+              <h2 class="text-xl sm:text-2xl font-bold text-gray-800">📈 Evolução do Leaderboard</h2>
+              <p class="text-sm text-gray-600 mt-1" v-if="history && history.length > 0">
+                {{ formatDateRange() }}
+              </p>
+            </div>
+            <button
+              @click="emit('close')"
+              class="p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+              aria-label="Fechar"
+            >
+              <svg class="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
 
-      <!-- Seletor de semanas -->
-      <div class="p-4 sm:p-6 border-b bg-gray-50">
-        <div class="flex flex-wrap gap-2">
-          <button
-            v-for="weeks in [1, 2, 3, 4]"
-            :key="weeks"
-            @click="selectedWeeks = weeks"
-            class="px-4 py-2 rounded-lg font-medium transition-colors text-sm sm:text-base"
-            :class="selectedWeeks === weeks ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-100 border'"
-          >
-            {{ weeks }} {{ weeks === 1 ? 'semana' : 'semanas' }}
-          </button>
-        </div>
-      </div>
+          <!-- Seletor de semanas -->
+          <div class="p-4 sm:p-6 border-b bg-gray-50 flex-shrink-0">
+            <div class="flex flex-wrap gap-2">
+              <button
+                v-for="weeks in [1, 2, 3, 4]"
+                :key="weeks"
+                @click="selectedWeeks = weeks"
+                class="px-4 py-2 rounded-lg font-medium transition-colors cursor-pointer text-sm sm:text-base"
+                :class="selectedWeeks === weeks ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-100 border'"
+              >
+                {{ weeks }} {{ weeks === 1 ? 'semana' : 'semanas' }}
+              </button>
+            </div>
+          </div>
 
-      <!-- Gráfico -->
-      <div class="p-4 sm:p-6 flex-1 overflow-hidden">
-        <div v-if="loading" class="flex items-center justify-center h-64 sm:h-80">
-          <p class="text-gray-600">Carregando gráfico...</p>
-        </div>
-        <div v-else-if="!history || history.length === 0" class="flex items-center justify-center h-64 sm:h-80">
-          <p class="text-gray-500">Nenhum dado disponível</p>
-        </div>
-        <div v-else class="h-64 sm:h-80">
-          <Line :data="chartData" :options="chartOptions" />
+          <!-- Gráfico -->
+          <div class="p-4 sm:p-6 flex-1 overflow-hidden">
+            <div v-if="loading" class="flex items-center justify-center h-64 sm:h-80">
+              <p class="text-gray-600">Carregando gráfico...</p>
+            </div>
+            <div v-else-if="!history || history.length === 0" class="flex items-center justify-center h-64 sm:h-80">
+              <p class="text-gray-500">Nenhum dado disponível</p>
+            </div>
+            <div v-else class="h-64 sm:h-80">
+              <Line :data="chartData" :options="chartOptions" />
+            </div>
+          </div>
         </div>
       </div>
-    </div>
-  </div>
+    </Transition>
+  </Teleport>
 </template>
+
+<style scoped>
+.slide-up-enter-active,
+.slide-up-leave-active {
+  transition: transform 0.3s ease-out;
+}
+
+.slide-up-enter-from {
+  transform: translateY(100%);
+}
+
+.slide-up-leave-to {
+  transform: translateY(100%);
+}
+</style>

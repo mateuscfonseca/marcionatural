@@ -139,7 +139,7 @@ onUnmounted(() => {
         <!-- Ações -->
         <div class="flex flex-wrap items-center gap-3">
           <div class="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
-            <button @click="changeDate(-1)" class="p-2 hover:bg-white rounded-md transition-colors">
+            <button @click="changeDate(-1)" class="p-2 hover:bg-white rounded-md transition-colors cursor-pointer">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
               </svg>
@@ -152,7 +152,7 @@ onUnmounted(() => {
             />
             <button
               @click="changeDate(1)"
-              class="p-2 hover:bg-white rounded-md transition-colors"
+              class="p-2 hover:bg-white rounded-md transition-colors cursor-pointer"
               :disabled="(selectedDate ?? '') >= new Date().toISOString().split('T')[0]"
               :class="(selectedDate ?? '') >= new Date().toISOString().split('T')[0] ? 'opacity-50 cursor-not-allowed' : ''"
             >
@@ -163,7 +163,7 @@ onUnmounted(() => {
             <button
               v-if="(selectedDate ?? '') !== new Date().toISOString().split('T')[0]"
               @click="goToToday"
-              class="px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
+              class="px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors cursor-pointer"
             >
               Hoje
             </button>
@@ -171,7 +171,7 @@ onUnmounted(() => {
 
           <button
             @click="showChart = true"
-            class="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors"
+            class="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors cursor-pointer"
           >
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
@@ -249,7 +249,7 @@ onUnmounted(() => {
                 </div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <button @click="viewUserEntries(user.id)" class="text-green-600 hover:text-green-800 font-medium">Ver Entradas →</button>
+                <button @click="viewUserEntries(user.id)" class="text-green-600 hover:text-green-800 font-medium cursor-pointer">Ver Entradas →</button>
               </td>
             </tr>
           </tbody>
@@ -288,7 +288,7 @@ onUnmounted(() => {
                 </div>
               </div>
               <div class="mt-2 text-right">
-                <button @click="viewUserEntries(user.id)" class="text-green-600 font-medium text-sm">Ver Entradas →</button>
+                <button @click="viewUserEntries(user.id)" class="text-green-600 font-medium text-sm cursor-pointer">Ver Entradas →</button>
               </div>
             </div>
           </div>
@@ -299,16 +299,17 @@ onUnmounted(() => {
     </div>
 
     <!-- Modal de Movimentação (Mobile) -->
-    <div
-      v-if="showMovementModal && selectedUserForMovement"
-      class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-      @click.self="closeMovementModal"
-    >
-      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
-        <div class="p-6 border-b">
-          <h3 class="text-lg font-bold text-gray-800">📊 Movimentação</h3>
-        </div>
-        <div class="p-6 space-y-4">
+    <Transition name="slide-up">
+      <div
+        v-if="showMovementModal && selectedUserForMovement"
+        class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 sm:bg-black/50 sm:backdrop-blur-sm"
+        @click.self="closeMovementModal"
+      >
+        <div class="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-sm overflow-hidden">
+          <div class="p-6 border-b">
+            <h3 class="text-lg font-bold text-gray-800">📊 Movimentação</h3>
+          </div>
+          <div class="p-6 space-y-4">
           <div class="flex items-center gap-3">
             <span class="text-3xl">{{ selectedUserForMovement.position === 1 ? '🥇' : selectedUserForMovement.position === 2 ? '🥈' : selectedUserForMovement.position === 3 ? '🥉' : `#${selectedUserForMovement.position}` }}</span>
             <div>
@@ -345,14 +346,30 @@ onUnmounted(() => {
         <div class="p-4 border-t bg-gray-50">
           <button
             @click="closeMovementModal"
-            class="w-full py-3 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800 transition-colors"
+            class="w-full py-3 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800 transition-colors cursor-pointer"
           >
             Fechar
           </button>
         </div>
+        </div>
       </div>
-    </div>
+    </Transition>
 
     <LeaderboardChart v-if="showChart" @close="showChart = false" />
   </div>
 </template>
+
+<style scoped>
+.slide-up-enter-active,
+.slide-up-leave-active {
+  transition: transform 0.3s ease-out;
+}
+
+.slide-up-enter-from {
+  transform: translateY(100%);
+}
+
+.slide-up-leave-to {
+  transform: translateY(100%);
+}
+</style>

@@ -41,29 +41,6 @@ const logs = computed<LogItem[]>(() => {
     date: props.entry.created_at,
   });
 
-  // Log de validação/invalidação
-  if (props.entry.invalidated_at) {
-    items.push({
-      id: `invalidated-${props.entry.id}`,
-      type: 'invalidated',
-      title: 'Tipo Invalidado',
-      description: 'O tipo de atividade foi invalidado pela comunidade',
-      icon: '❌',
-      color: 'red',
-      date: props.entry.invalidated_at,
-    });
-  } else if (props.entry.is_activity_validated) {
-    items.push({
-      id: `validated-${props.entry.id}`,
-      type: 'validated',
-      title: 'Tipo Validado',
-      description: 'O tipo de atividade está validado pela comunidade',
-      icon: '✅',
-      color: 'green',
-      date: props.entry.created_at, // Usa data de criação como referência
-    });
-  }
-
   // Logs de reports
   if (props.reports && props.reports.length > 0) {
     props.reports.forEach((report, index) => {
@@ -76,6 +53,19 @@ const logs = computed<LogItem[]>(() => {
         color: 'orange',
         date: report.created_at,
       });
+    });
+  }
+
+  // Log de invalidação (quando há 3+ reports)
+  if (props.entry.invalidated_at) {
+    items.push({
+      id: `invalidated-${props.entry.id}`,
+      type: 'invalidated',
+      title: 'Entrada Invalidada',
+      description: 'Entrada invalidada após 3 ou mais reports',
+      icon: '❌',
+      color: 'red',
+      date: props.entry.invalidated_at,
     });
   }
 

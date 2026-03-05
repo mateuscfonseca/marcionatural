@@ -16,6 +16,7 @@ import type {
   VotingEntry,
   TimelineEntry,
   ProjectWithProgress,
+  PaginatedEntriesResponse,
 } from '@/types';
 
 const API_BASE = '/api';
@@ -130,15 +131,27 @@ export async function getLeaderboard(): Promise<{ leaderboard: LeaderboardUser[]
   return handleResponse<{ leaderboard: LeaderboardUser[] }>(response);
 }
 
-export async function getUserEntries(userId: number): Promise<{
-  user: User;
-  entries: {
-    positive: UserEntry[];
-    negative: UserEntry[];
-    all: UserEntry[];
+export async function getUserEntries(userId: number, params?: {
+  page?: number;
+  limit?: number;
+  timeFilter?: 'today' | 'last3' | 'last7' | 'all';
+}): Promise<{
+  user: { id: number; username: string };
+  entries: UserEntry[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
   };
 }> {
-  const response = await fetch(`${API_BASE}/leaderboard/users/${userId}/entries`, {
+  const queryParams = new URLSearchParams();
+  if (params?.page) queryParams.append('page', params.page.toString());
+  if (params?.limit) queryParams.append('limit', params.limit.toString());
+  if (params?.timeFilter) queryParams.append('timeFilter', params.timeFilter);
+
+  const url = `${API_BASE}/entries/users/${userId}${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+  const response = await fetch(url, {
     credentials: 'include',
   });
   return handleResponse(response);
@@ -152,8 +165,18 @@ export async function getAllUsers(): Promise<{ users: (User & { created_at: stri
 }
 
 // Entradas
-export async function getMyEntries(): Promise<{ entries: UserEntry[] }> {
-  const response = await fetch(`${API_BASE}/entries`, {
+export async function getMyEntries(params?: {
+  page?: number;
+  limit?: number;
+  timeFilter?: 'today' | 'last3' | 'last7' | 'all';
+}): Promise<PaginatedEntriesResponse> {
+  const queryParams = new URLSearchParams();
+  if (params?.page) queryParams.append('page', params.page.toString());
+  if (params?.limit) queryParams.append('limit', params.limit.toString());
+  if (params?.timeFilter) queryParams.append('timeFilter', params.timeFilter);
+
+  const url = `${API_BASE}/entries${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+  const response = await fetch(url, {
     credentials: 'include',
   });
   return handleResponse(response);

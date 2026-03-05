@@ -25,6 +25,18 @@ export interface UserEntry {
   is_activity_positive?: boolean;
 }
 
+export interface PaginationResponse {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface PaginatedEntriesResponse {
+  entries: UserEntry[];
+  pagination: PaginationResponse;
+}
+
 export interface LeaderboardUser {
   id: number;
   username: string;

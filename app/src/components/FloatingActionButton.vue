@@ -53,7 +53,7 @@ function closeModals() {
     <!-- Botão Principal -->
     <button
       @click="isOpen = !isOpen"
-      class="w-14 h-14 bg-green-600 text-white rounded-full shadow-lg hover:bg-green-700 transition-all flex items-center justify-center text-2xl"
+      class="w-14 h-14 bg-green-600 text-white rounded-full shadow-lg hover:bg-green-700 transition-all flex items-center justify-center text-2xl cursor-pointer"
       :class="{ 'rotate-45': isOpen }"
     >
       {{ isOpen ? '✕' : '+' }}
@@ -66,7 +66,7 @@ function closeModals() {
     >
       <button
         @click="openQuickEntry"
-        class="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center gap-3"
+        class="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center gap-3 cursor-pointer"
       >
         <span class="text-2xl">📝</span>
         <div>
@@ -76,7 +76,7 @@ function closeModals() {
       </button>
       <button
         @click="openProjectLog"
-        class="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center gap-3"
+        class="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center gap-3 cursor-pointer"
       >
         <span class="text-2xl">⏱️</span>
         <div>

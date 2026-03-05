@@ -321,7 +321,7 @@ onMounted(async () => {
 
               <button
                 @click="handleReport(entry.id)"
-                class="w-full sm:w-auto px-3 sm:px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
+                class="w-full sm:w-auto px-3 sm:px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium cursor-pointer"
               >
                 🚩 Reportar
               </button>
@@ -458,7 +458,7 @@ onMounted(async () => {
 
               <button
                 @click="handleRemoveReportFromMyReports(report.id, report.entry_id)"
-                class="w-full sm:w-auto px-3 sm:px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
+                class="w-full sm:w-auto px-3 sm:px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium cursor-pointer"
               >
                 🗑️ Remover Report
               </button>

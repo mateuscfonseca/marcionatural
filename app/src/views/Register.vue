@@ -104,7 +104,7 @@ async function handleSubmit() {
         <button
           type="submit"
           :disabled="loading"
-          class="w-full py-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl font-semibold text-lg hover:from-green-700 hover:to-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-xs hover:-translate-y-0.5"
+          class="w-full py-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl font-semibold text-lg hover:from-green-700 hover:to-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-xs hover:-translate-y-0.5 cursor-pointer"
         >
           {{ loading ? 'Cadastrando...' : 'Cadastrar' }}
         </button>
@@ -113,7 +113,7 @@ async function handleSubmit() {
       <div class="mt-8 text-center">
         <p class="text-base text-gray-600">
           Já tem uma conta?
-          <router-link to="/login" class="text-green-600 hover:text-green-700 font-semibold underline underline-offset-2">
+          <router-link to="/login" class="text-green-600 hover:text-green-700 font-semibold underline underline-offset-2 cursor-pointer">
             Faça login
           </router-link>
         </p>

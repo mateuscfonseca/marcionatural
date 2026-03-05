@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import { getMyEntries, deleteEntry, getValidatedActivityTypes, getEntryReports } from '@/services/api';
-import type { UserEntry, ActivityType, EntryReport } from '@/types';
+import type { UserEntry, ActivityType, EntryReport, PaginatedEntriesResponse } from '@/types';
 import EntryFormModal from '@/components/EntryFormModal.vue';
 import EntryProgressModal from '@/components/EntryProgressModal.vue';
-import { CategoryId } from '@/utils/category.enum';
+import EntryList from '@/components/EntryList.vue';
 
 const entries = ref<UserEntry[]>([]);
 const activityTypes = ref<ActivityType[]>([]);
@@ -12,65 +12,46 @@ const loading = ref(true);
 const showModal = ref(false);
 const editingEntry = ref<UserEntry | null>(null);
 const showDeleteConfirm = ref(false);
-const entryToDelete = ref<number | null>(null);
+const entryToDelete = ref<UserEntry | null>(null);
 const showProgressModal = ref(false);
 const selectedEntry = ref<UserEntry | null>(null);
 const entryReports = ref<EntryReport[]>([]);
 const hasReported = ref(false);
 
-// Paginação
-const currentPagePositive = ref(1);
-const currentPageNegative = ref(1);
-const entriesPerPage = ref(6);
+// Paginação (two-way binding com EntryList)
+const pagination = ref<PaginatedEntriesResponse['pagination'] | null>(null);
+const currentPage = ref(1);
+const entriesPerPage = ref(10);
 
-const positiveEntries = computed(() => entries.value.filter(e => e.category_id === CategoryId.EXERCICIO || (e.category_id === CategoryId.REFEICAO && e.is_activity_positive)));
-const negativeEntries = computed(() => entries.value.filter(e => e.category_id === CategoryId.ENTORPECENTES || (e.category_id === CategoryId.REFEICAO && !e.is_activity_positive)));
-const invalidatedEntries = computed(() => entries.value.filter(e => !e.is_activity_validated));
-
-// Paginação
-const paginatedPositive = computed(() => {
-  const start = (currentPagePositive.value - 1) * entriesPerPage.value;
-  const end = start + entriesPerPage.value;
-  return positiveEntries.value.slice(start, end);
-});
-
-const paginatedNegative = computed(() => {
-  const start = (currentPageNegative.value - 1) * entriesPerPage.value;
-  const end = start + entriesPerPage.value;
-  return negativeEntries.value.slice(start, end);
-});
-
-const totalPagesPositive = computed(() => Math.ceil(positiveEntries.value.length / entriesPerPage.value));
-const totalPagesNegative = computed(() => Math.ceil(negativeEntries.value.length / entriesPerPage.value));
-
-function goToPagePositive(page: number) {
-  if (page >= 1 && page <= totalPagesPositive.value) {
-    currentPagePositive.value = page;
-  }
-}
-
-function goToPageNegative(page: number) {
-  if (page >= 1 && page <= totalPagesNegative.value) {
-    currentPageNegative.value = page;
-  }
-}
-
-async function loadEntries() {
+async function loadEntries(page = 1, limit = entriesPerPage.value, timeFilter: 'today' | 'last3' | 'last7' | 'all' = 'all') {
   try {
     const [entriesData, typesData] = await Promise.all([
-      getMyEntries(),
+      getMyEntries({ page, limit, timeFilter }),
       getValidatedActivityTypes(),
     ]);
     entries.value = entriesData.entries;
+    pagination.value = entriesData.pagination;
     activityTypes.value = typesData.activityTypes;
-    // Resetar paginação ao carregar novas entradas
-    currentPagePositive.value = 1;
-    currentPageNegative.value = 1;
+    currentPage.value = page;
   } catch (error) {
     console.error('Erro ao carregar entradas:', error);
   } finally {
     loading.value = false;
   }
+}
+
+// Watch para recarregar quando página ou limite mudarem (two-way binding)
+watch([currentPage, entriesPerPage], ([newPage, newLimit], [oldPage, oldLimit]) => {
+  // Ignorar se valores forem undefined (inicialização)
+  if (oldPage === undefined && oldLimit === undefined) {
+    return;
+  }
+  loadEntries(newPage, newLimit);
+});
+
+function handleTimeFilterChange(filter: 'today' | 'last3' | 'last7' | 'all') {
+  currentPage.value = 1;
+  loadEntries(1, entriesPerPage.value, filter);
 }
 
 function openNewEntryModal() {
@@ -87,15 +68,15 @@ async function handleSubmit() {
   await loadEntries();
 }
 
-function confirmDelete(id: number) {
-  entryToDelete.value = id;
+function confirmDelete(entry: UserEntry) {
+  entryToDelete.value = entry;
   showDeleteConfirm.value = true;
 }
 
 async function handleDelete() {
   if (!entryToDelete.value) return;
   try {
-    await deleteEntry(entryToDelete.value);
+    await deleteEntry(entryToDelete.value.id);
     await loadEntries();
   } catch (error) {
     console.error('Erro ao deletar entrada:', error);
@@ -103,24 +84,6 @@ async function handleDelete() {
     showDeleteConfirm.value = false;
     entryToDelete.value = null;
   }
-}
-
-function formatPoints(points: number): string {
-  return points >= 0 ? `+${points}` : `${points}`;
-}
-
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
-function getActivityTypeName(id: number): string {
-  return activityTypes.value.find(at => at.id === id)?.name || 'Desconhecido';
 }
 
 async function openEntryDetails(entry: UserEntry) {
@@ -136,7 +99,7 @@ async function openEntryDetails(entry: UserEntry) {
   showProgressModal.value = true;
 }
 
-onMounted(loadEntries);
+onMounted(() => loadEntries());
 </script>
 
 <template>
@@ -145,7 +108,7 @@ onMounted(loadEntries);
       <h1 class="text-xl sm:text-2xl font-bold text-gray-800">📝 Minhas Entradas</h1>
       <button
         @click="openNewEntryModal"
-        class="px-4 py-2 sm:py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 text-sm sm:text-base font-medium"
+        class="px-4 py-2 sm:py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 text-sm sm:text-base font-medium cursor-pointer"
       >
         <span>➕</span>
         <span class="hidden sm:inline">Nova Entrada</span>
@@ -153,215 +116,18 @@ onMounted(loadEntries);
       </button>
     </div>
 
-    <div v-if="loading" class="text-center py-8">
-      <p class="text-gray-600">Carregando...</p>
-    </div>
-
-    <div v-else class="space-y-6">
-      <!-- Entradas Positivas -->
-      <div>
-        <h2 class="text-base sm:text-lg font-semibold text-green-600 mb-4">
-          ✅ Positivas ({{ positiveEntries.length }})
-        </h2>
-        <div v-if="positiveEntries.length === 0" class="bg-white rounded-xl p-6 text-center text-gray-500 border">
-          Nenhuma entrada positiva
-        </div>
-        <div v-else>
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-            <div
-              v-for="entry in paginatedPositive"
-              :key="entry.id"
-              class="bg-white rounded-xl shadow-sm border border-green-200 p-4"
-            >
-              <div class="flex gap-3">
-                <div v-if="entry.photo_url" class="flex-shrink-0">
-                  <img
-                    :src="entry.photo_url"
-                    :alt="entry.description"
-                    class="w-16 h-16 object-cover rounded-lg"
-                  />
-                </div>
-                <div class="flex-1 min-w-0">
-                  <div class="flex items-start justify-between gap-2 mb-1">
-                    <span class="px-2 py-1 rounded text-xs font-semibold bg-green-100 text-green-800 whitespace-nowrap">
-                      +{{ entry.points }} pts
-                    </span>
-                    <span class="text-xs text-gray-500">
-                      📅 {{ entry.entry_date ? new Date(entry.entry_date + 'T00:00:00').toLocaleDateString('pt-BR') : formatDate(entry.created_at).split(' ')[0] }}
-                    </span>
-                  </div>
-                  <p class="text-sm text-gray-700 line-clamp-2 mb-1">{{ entry.description }}</p>
-                  <div v-if="entry.duration_minutes" class="text-xs text-gray-500">
-                    ⏱️ {{ entry.duration_minutes }} min
-                  </div>
-                </div>
-              </div>
-              <div class="flex gap-2 mt-3 pt-3 border-t">
-                <button
-                  @click="openEntryDetails(entry)"
-                  class="flex-1 text-sm text-purple-600 hover:text-purple-800 font-medium"
-                >
-                  Ver detalhes
-                </button>
-                <button
-                  @click="openEditModal(entry)"
-                  class="flex-1 text-sm text-blue-600 hover:text-blue-800 font-medium"
-                >
-                  Editar
-                </button>
-                <button
-                  @click="confirmDelete(entry.id)"
-                  class="flex-1 text-sm text-red-600 hover:text-red-800 font-medium"
-                >
-                  Excluir
-                </button>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Paginação Positivas -->
-          <div v-if="totalPagesPositive > 1" class="flex justify-center items-center gap-2 mt-4">
-            <button
-              @click="goToPagePositive(currentPagePositive - 1)"
-              :disabled="currentPagePositive === 1"
-              class="px-3 py-2 rounded-lg border hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              ← Anterior
-            </button>
-            <span class="text-sm text-gray-600">
-              Página {{ currentPagePositive }} de {{ totalPagesPositive }}
-            </span>
-            <button
-              @click="goToPagePositive(currentPagePositive + 1)"
-              :disabled="currentPagePositive === totalPagesPositive"
-              class="px-3 py-2 rounded-lg border hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Próxima →
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Entradas Negativas -->
-      <div>
-        <h2 class="text-base sm:text-lg font-semibold text-red-600 mb-4">
-          ❌ Negativas ({{ negativeEntries.length }})
-        </h2>
-        <div v-if="negativeEntries.length === 0" class="bg-white rounded-xl p-6 text-center text-gray-500 border">
-          Nenhuma entrada negativa
-        </div>
-        <div v-else>
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-            <div
-              v-for="entry in paginatedNegative"
-              :key="entry.id"
-              class="bg-white rounded-xl shadow-sm border border-red-200 p-4"
-            >
-              <div class="flex gap-3">
-                <div v-if="entry.photo_url" class="flex-shrink-0">
-                  <img
-                    :src="entry.photo_url"
-                    :alt="entry.description"
-                    class="w-16 h-16 object-cover rounded-lg"
-                  />
-                </div>
-                <div class="flex-1 min-w-0">
-                  <div class="flex items-start justify-between gap-2 mb-1">
-                    <span class="px-2 py-1 rounded text-xs font-semibold bg-red-100 text-red-800 whitespace-nowrap">
-                      {{ entry.points }} pts
-                    </span>
-                    <span class="text-xs text-gray-500">
-                      📅 {{ entry.entry_date ? new Date(entry.entry_date + 'T00:00:00').toLocaleDateString('pt-BR') : formatDate(entry.created_at).split(' ')[0] }}
-                    </span>
-                  </div>
-                  <p class="text-sm text-gray-700 line-clamp-2 mb-1">{{ entry.description }}</p>
-                  <div v-if="entry.duration_minutes" class="text-xs text-gray-500">
-                    ⏱️ {{ entry.duration_minutes }} min
-                  </div>
-                </div>
-              </div>
-              <div class="flex gap-2 mt-3 pt-3 border-t">
-                <button
-                  @click="openEntryDetails(entry)"
-                  class="flex-1 text-sm text-purple-600 hover:text-purple-800 font-medium"
-                >
-                  Ver detalhes
-                </button>
-                <button
-                  @click="openEditModal(entry)"
-                  class="flex-1 text-sm text-blue-600 hover:text-blue-800 font-medium"
-                >
-                  Editar
-                </button>
-                <button
-                  @click="confirmDelete(entry.id)"
-                  class="flex-1 text-sm text-red-600 hover:text-red-800 font-medium"
-                >
-                  Excluir
-                </button>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Paginação Negativas -->
-          <div v-if="totalPagesNegative > 1" class="flex justify-center items-center gap-2 mt-4">
-            <button
-              @click="goToPageNegative(currentPageNegative - 1)"
-              :disabled="currentPageNegative === 1"
-              class="px-3 py-2 rounded-lg border hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              ← Anterior
-            </button>
-            <span class="text-sm text-gray-600">
-              Página {{ currentPageNegative }} de {{ totalPagesNegative }}
-            </span>
-            <button
-              @click="goToPageNegative(currentPageNegative + 1)"
-              :disabled="currentPageNegative === totalPagesNegative"
-              class="px-3 py-2 rounded-lg border hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Próxima →
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Entradas Invalidadas -->
-      <div v-if="invalidatedEntries.length > 0">
-        <h2 class="text-base sm:text-lg font-semibold text-gray-600 mb-4">
-          ⚠️ Invalidadas ({{ invalidatedEntries.length }})
-        </h2>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-          <div
-            v-for="entry in invalidatedEntries"
-            :key="entry.id"
-            class="bg-gray-100 rounded-xl shadow-sm border border-gray-300 p-4 opacity-75"
-          >
-            <div class="flex gap-3">
-              <div v-if="entry.photo_url" class="flex-shrink-0">
-                <img
-                  :src="entry.photo_url"
-                  :alt="entry.description"
-                  class="w-16 h-16 object-cover rounded-lg"
-                />
-              </div>
-              <div class="flex-1 min-w-0">
-                <div class="flex items-start justify-between gap-2 mb-1">
-                  <span class="px-2 py-1 rounded text-xs font-semibold bg-gray-300 text-gray-700 whitespace-nowrap">
-                    0 pts
-                  </span>
-                  <span class="text-xs text-gray-500">
-                    📅 {{ entry.entry_date ? new Date(entry.entry_date + 'T00:00:00').toLocaleDateString('pt-BR') : formatDate(entry.created_at).split(' ')[0] }}
-                  </span>
-                </div>
-                <p class="text-sm text-gray-600 line-clamp-2 mb-1">{{ entry.description }}</p>
-                <p class="text-xs text-red-600 font-medium">❌ Tipo invalidado</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    <EntryList
+      v-model:page="currentPage"
+      v-model:limit="entriesPerPage"
+      :entries="entries"
+      :pagination="pagination"
+      :loading="loading"
+      show-actions="edit-delete"
+      @update:time-filter="handleTimeFilterChange"
+      @click-entry="openEntryDetails"
+      @edit-entry="openEditModal"
+      @delete-entry="confirmDelete"
+    />
 
     <!-- Modal de Criar/Editar -->
     <EntryFormModal
@@ -382,25 +148,42 @@ onMounted(loadEntries);
     />
 
     <!-- Modal de Confirmação de Exclusão -->
-    <div v-if="showDeleteConfirm" class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
-        <h3 class="text-lg font-bold text-gray-800 mb-4">Confirmar Exclusão</h3>
-        <p class="text-gray-600 mb-6 text-sm sm:text-base">Tem certeza que deseja excluir esta entrada?</p>
-        <div class="flex gap-3">
-          <button
-            @click="showDeleteConfirm = false"
-            class="flex-1 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm sm:text-base font-medium"
-          >
-            Cancelar
-          </button>
-          <button
-            @click="handleDelete"
-            class="flex-1 px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm sm:text-base font-medium"
-          >
-            Excluir
-          </button>
+    <Transition name="slide-up">
+      <div v-if="showDeleteConfirm" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 sm:bg-black/40 sm:backdrop-blur-sm" @click.self="showDeleteConfirm = false">
+        <div class="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full sm:max-w-md p-6">
+          <h3 class="text-lg font-bold text-gray-800 mb-4">Confirmar Exclusão</h3>
+          <p class="text-gray-600 mb-6 text-sm sm:text-base">Tem certeza que deseja excluir esta entrada?</p>
+          <div class="flex gap-3">
+            <button
+              @click="showDeleteConfirm = false"
+              class="flex-1 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm sm:text-base font-medium cursor-pointer"
+            >
+              Cancelar
+            </button>
+            <button
+              @click="handleDelete"
+              class="flex-1 px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm sm:text-base font-medium cursor-pointer"
+            >
+              Excluir
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </Transition>
   </div>
 </template>
+
+<style scoped>
+.slide-up-enter-active,
+.slide-up-leave-active {
+  transition: transform 0.3s ease-out;
+}
+
+.slide-up-enter-from {
+  transform: translateY(100%);
+}
+
+.slide-up-leave-to {
+  transform: translateY(100%);
+}
+</style>

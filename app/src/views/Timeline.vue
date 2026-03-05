@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
-import { getTimeline } from '@/services/api';
-import type { TimelineEntry } from '@/types';
+import { getTimeline, getEntryReports } from '@/services/api';
+import type { TimelineEntry, EntryReport } from '@/types';
 import { useRouter } from 'vue-router';
 import { CategoryId, CategoryNames } from '@/utils/category.enum';
+import EntryProgressModal from '@/components/EntryProgressModal.vue';
 
 const router = useRouter();
 
@@ -15,6 +16,12 @@ const hasMore = ref(true);
 const loadingMore = ref(false);
 
 const selectedDays = ref<number | undefined>(undefined);
+
+// Modal states
+const showProgressModal = ref(false);
+const selectedEntry = ref<TimelineEntry | null>(null);
+const entryReports = ref<EntryReport[]>([]);
+const hasReported = ref(false);
 
 async function loadTimeline(append = false) {
   try {
@@ -129,6 +136,26 @@ function viewUserEntries(userId: number) {
   router.push(`/users/${userId}/entries`);
 }
 
+function viewEntryDetails(entry: TimelineEntry) {
+  selectedEntry.value = entry;
+  // Buscar reports apenas para atividades (não para projetos)
+  if (entry.entry_type === 'activity') {
+    getEntryReports(entry.id)
+      .then((data) => {
+        entryReports.value = data.reports;
+        hasReported.value = data.hasReported;
+      })
+      .catch(() => {
+        entryReports.value = [];
+        hasReported.value = false;
+      });
+  } else {
+    entryReports.value = [];
+    hasReported.value = false;
+  }
+  showProgressModal.value = true;
+}
+
 function loadMore() {
   if (hasMore.value && !loadingMore.value) {
     loadTimeline(true);
@@ -156,28 +183,28 @@ onMounted(() => {
         <div class="flex gap-2 overflow-x-auto pb-2 sm:pb-0">
           <button
             @click="filterByDays(undefined)"
-            class="px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-colors text-xs sm:text-sm flex-shrink-0"
+            class="px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-colors cursor-pointer text-xs sm:text-sm flex-shrink-0"
             :class="selectedDays === undefined ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
           >
             Tudo
           </button>
           <button
             @click="filterByDays(1)"
-            class="px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-colors text-xs sm:text-sm flex-shrink-0"
+            class="px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-colors cursor-pointer text-xs sm:text-sm flex-shrink-0"
             :class="selectedDays === 1 ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
           >
             Hoje
           </button>
           <button
             @click="filterByDays(7)"
-            class="px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-colors text-xs sm:text-sm flex-shrink-0"
+            class="px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-colors cursor-pointer text-xs sm:text-sm flex-shrink-0"
             :class="selectedDays === 7 ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
           >
             7 dias
           </button>
           <button
             @click="filterByDays(30)"
-            class="px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-colors text-xs sm:text-sm flex-shrink-0"
+            class="px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-colors cursor-pointer text-xs sm:text-sm flex-shrink-0"
             :class="selectedDays === 30 ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
           >
             30 dias
@@ -201,7 +228,8 @@ onMounted(() => {
         <div
           v-for="entry in entries"
           :key="entry.id"
-          class="bg-white rounded-xl shadow-sm border p-3 sm:p-4 w-full overflow-hidden hover:shadow-md transition-shadow"
+          class="bg-white rounded-xl shadow-sm border p-3 sm:p-4 w-full overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
+          @click="viewEntryDetails(entry)"
         >
           <div class="flex gap-2 sm:gap-4">
             <!-- Foto (apenas para atividades) -->
@@ -210,7 +238,7 @@ onMounted(() => {
                 :src="entry.photo_url"
                 :alt="entry.description"
                 class="w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
-                @click="viewUserEntries(entry.user_id)"
+                @click="viewEntryDetails(entry)"
               />
             </div>
             <!-- Ícone para projetos sem foto -->
@@ -256,8 +284,8 @@ onMounted(() => {
               <!-- Footer -->
               <div class="flex items-center justify-between text-xs text-gray-500 flex-wrap gap-2">
                 <button
-                  @click="viewUserEntries(entry.user_id)"
-                  class="font-medium text-green-600 hover:text-green-800 transition-colors"
+                  @click.stop="viewUserEntries(entry.user_id)"
+                  class="font-medium text-green-600 hover:text-green-800 transition-colors cursor-pointer"
                 >
                   👤 {{ entry.username }}
                 </button>
@@ -284,7 +312,7 @@ onMounted(() => {
         <div v-if="hasMore" class="text-center pt-4">
           <button
             @click="loadMore"
-            class="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+            class="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors cursor-pointer"
           >
             Carregar mais
           </button>
@@ -296,6 +324,16 @@ onMounted(() => {
         </div>
       </div>
     </div>
+
+    <!-- Modal de Detalhes da Entrada -->
+    <EntryProgressModal
+      v-model="showProgressModal"
+      :entry="selectedEntry"
+      :reports="entryReports"
+      :has-reported="hasReported"
+      :show-report-button="selectedEntry?.entry_type === 'activity'"
+      @close="selectedEntry = null"
+    />
   </div>
 </template>
 

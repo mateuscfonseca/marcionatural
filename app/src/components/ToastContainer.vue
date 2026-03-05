@@ -34,7 +34,7 @@ const getToastClasses = (type: 'success' | 'error' | 'info') => {
           <p class="text-sm font-medium flex-1">{{ toast.message }}</p>
           <button
             @click="removeToast(toast.id)"
-            class="text-gray-400 hover:text-gray-600 text-lg leading-none"
+            class="text-gray-400 hover:text-gray-600 text-lg leading-none cursor-pointer"
           >
             ×
           </button>

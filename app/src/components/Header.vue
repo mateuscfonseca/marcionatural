@@ -20,7 +20,7 @@ async function handleLogout() {
         <!-- Botão Hamburger (mobile) -->
         <button
           @click="toggle"
-          class="lg:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          class="lg:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
           aria-label="Abrir menu"
         >
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -38,7 +38,7 @@ async function handleLogout() {
 
       <button
         @click="handleLogout"
-        class="px-3 sm:px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors flex items-center gap-2 text-sm sm:text-base"
+        class="px-3 sm:px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors flex items-center gap-2 text-sm sm:text-base cursor-pointer"
       >
         <span class="icon-[mdi--logout-variant] w-5 h-5"></span>
         <span class="hidden sm:inline">Logout</span>

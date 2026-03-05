@@ -120,7 +120,7 @@ onMounted(loadProjects);
       <h1 class="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-800">📚 Projetos Pessoais</h1>
       <button
         @click="openNewProjectModal"
-        class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 text-sm sm:text-base"
+        class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 text-sm sm:text-base cursor-pointer"
       >
         <span>➕</span>
         <span class="hidden sm:inline">Novo Projeto</span>
@@ -164,13 +164,13 @@ onMounted(loadProjects);
         <div class="flex flex-wrap gap-2">
           <button
             @click="openLogModal(project)"
-            class="flex-1 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
+            class="flex-1 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm cursor-pointer"
           >
             ⏱️ Registrar
           </button>
           <button
             @click="viewProgress(project)"
-            class="flex-1 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+            class="flex-1 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm cursor-pointer"
           >
             📊 Progresso
           </button>
@@ -179,13 +179,13 @@ onMounted(loadProjects);
         <div class="flex gap-2 mt-4 pt-4 border-t">
           <button
             @click="openEditModal(project)"
-            class="flex-1 px-3 py-2 text-blue-600 hover:bg-blue-50 rounded transition-colors text-sm"
+            class="flex-1 px-3 py-2 text-blue-600 hover:bg-blue-50 rounded transition-colors text-sm cursor-pointer"
           >
             Editar
           </button>
           <button
             @click="handleDelete(project.id)"
-            class="flex-1 px-3 py-2 text-red-600 hover:bg-red-50 rounded transition-colors text-sm"
+            class="flex-1 px-3 py-2 text-red-600 hover:bg-red-50 rounded transition-colors text-sm cursor-pointer"
           >
             Excluir
           </button>
@@ -199,15 +199,16 @@ onMounted(loadProjects);
     </div>
 
     <!-- Modal Criar/Editar Projeto -->
-    <div v-if="showModal" class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full">
-        <div class="p-4 sm:p-6 border-b">
-          <h2 class="text-lg sm:text-xl font-bold text-gray-800">
-            {{ editingProject ? 'Editar Projeto' : 'Novo Projeto' }}
-          </h2>
-        </div>
+    <Transition name="slide-up">
+      <div v-if="showModal" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 sm:bg-black/40 sm:backdrop-blur-sm" @click.self="showModal = false">
+        <div class="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full sm:max-w-2xl h-[calc(100vh-4rem)] sm:h-auto max-h-[90vh] overflow-y-auto">
+          <div class="p-4 sm:p-6 border-b">
+            <h2 class="text-lg sm:text-xl font-bold text-gray-800">
+              {{ editingProject ? 'Editar Projeto' : 'Novo Projeto' }}
+            </h2>
+          </div>
 
-        <form @submit.prevent="handleSubmit" class="p-4 sm:p-6 space-y-4">
+          <form @submit.prevent="handleSubmit" class="p-4 sm:p-6 space-y-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">Nome</label>
             <input
@@ -246,20 +247,21 @@ onMounted(loadProjects);
             <button
               type="button"
               @click="showModal = false"
-              class="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              class="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              class="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              class="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors cursor-pointer"
             >
               {{ editingProject ? 'Salvar' : 'Criar' }}
             </button>
           </div>
         </form>
+        </div>
       </div>
-    </div>
+    </Transition>
 
     <!-- Modal Registrar Tempo -->
     <ProjectLogModal
@@ -269,14 +271,15 @@ onMounted(loadProjects);
     />
 
     <!-- Modal Progresso Semanal -->
-    <div v-if="showProgressModal && currentProgress" class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full">
-        <div class="p-4 sm:p-6 border-b flex justify-between items-center">
-          <h2 class="text-lg sm:text-xl font-bold text-gray-800">📊 Progresso Semanal</h2>
-          <button @click="showProgressModal = false" class="text-gray-500 hover:text-gray-700 text-2xl">×</button>
-        </div>
+    <Transition name="slide-up">
+      <div v-if="showProgressModal && currentProgress" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 sm:bg-black/40 sm:backdrop-blur-sm" @click.self="showProgressModal = false">
+        <div class="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full sm:max-w-2xl h-[calc(100vh-4rem)] sm:h-auto max-h-[90vh] overflow-y-auto">
+          <div class="p-4 sm:p-6 border-b flex justify-between items-center flex-shrink-0">
+            <h2 class="text-lg sm:text-xl font-bold text-gray-800">📊 Progresso Semanal</h2>
+            <button @click="showProgressModal = false" class="text-gray-500 hover:text-gray-700 text-2xl cursor-pointer">×</button>
+          </div>
 
-        <div class="p-4 sm:p-6">
+          <div class="p-4 sm:p-6">
           <div class="text-center mb-6">
             <p class="text-sm sm:text-base text-gray-600">Semana {{ currentProgress.weekNumber }}/{{ currentProgress.year }}</p>
             <p class="text-2xl sm:text-3xl font-bold mt-2" :class="currentProgress.goalReached ? 'text-green-600' : 'text-gray-800'">
@@ -322,7 +325,23 @@ onMounted(loadProjects);
             </div>
           </div>
         </div>
+        </div>
       </div>
-    </div>
+    </Transition>
   </div>
 </template>
+
+<style scoped>
+.slide-up-enter-active,
+.slide-up-leave-active {
+  transition: transform 0.3s ease-out;
+}
+
+.slide-up-enter-from {
+  transform: translateY(100%);
+}
+
+.slide-up-leave-to {
+  transform: translateY(100%);
+}
+</style>

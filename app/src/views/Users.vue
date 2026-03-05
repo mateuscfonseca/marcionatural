@@ -169,14 +169,14 @@ onMounted(loadUsers);
                   <div class="flex items-center gap-2">
                     <button
                       @click="viewUserEntries(user.id)"
-                      class="text-green-600 hover:text-green-800 font-medium text-sm"
+                      class="text-green-600 hover:text-green-800 font-medium text-sm cursor-pointer"
                     >
                       Ver Entradas →
                     </button>
                     <button
                       v-if="isDeleted(user)"
                       @click="openRestoreModal(user)"
-                      class="text-blue-600 hover:text-blue-800 font-medium text-sm"
+                      class="text-blue-600 hover:text-blue-800 font-medium text-sm cursor-pointer"
                       title="Reativar usuário"
                     >
                       ♻️ Reativar
@@ -184,7 +184,7 @@ onMounted(loadUsers);
                     <button
                       v-else
                       @click="openDeleteModal(user)"
-                      class="text-red-600 hover:text-red-800 font-medium text-sm"
+                      class="text-red-600 hover:text-red-800 font-medium text-sm cursor-pointer"
                       title="Excluir usuário"
                     >
                       🗑️ Excluir
@@ -241,21 +241,21 @@ onMounted(loadUsers);
           <div class="flex gap-2">
             <button
               @click="viewUserEntries(user.id)"
-              class="flex-1 py-2 bg-green-50 text-green-600 rounded-lg font-medium hover:bg-green-100 transition-colors"
+              class="flex-1 py-2 bg-green-50 text-green-600 rounded-lg font-medium hover:bg-green-100 transition-colors cursor-pointer"
             >
               Ver Entradas →
             </button>
             <button
               v-if="isDeleted(user)"
               @click="openRestoreModal(user)"
-              class="py-2 bg-blue-50 text-blue-600 rounded-lg font-medium hover:bg-blue-100 transition-colors"
+              class="py-2 bg-blue-50 text-blue-600 rounded-lg font-medium hover:bg-blue-100 transition-colors cursor-pointer"
             >
               ♻️ Reativar
             </button>
             <button
               v-else
               @click="openDeleteModal(user)"
-              class="py-2 bg-red-50 text-red-600 rounded-lg font-medium hover:bg-red-100 transition-colors"
+              class="py-2 bg-red-50 text-red-600 rounded-lg font-medium hover:bg-red-100 transition-colors cursor-pointer"
             >
               🗑️ Excluir
             </button>
@@ -269,44 +269,61 @@ onMounted(loadUsers);
     </div>
 
     <!-- Modal de Confirmação -->
-    <div
-      v-if="showModal"
-      class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-      @click="closeModal"
-    >
+    <Transition name="slide-up">
       <div
-        class="bg-white rounded-xl p-6 max-w-md w-full shadow"
-        @click.stop
+        v-if="showModal"
+        class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 sm:bg-black/40 sm:backdrop-blur-sm"
+        @click="closeModal"
       >
-        <h3 class="text-lg font-bold text-gray-800 mb-2">
-          {{ modalAction === 'delete' ? '🗑️ Excluir Usuário' : '♻️ Reativar Usuário' }}
-        </h3>
-        <p class="text-gray-600 mb-6">
-          {{ modalAction === 'delete'
-            ? `Tem certeza que deseja excluir o usuário "${selectedUser?.username}"? Esta ação pode ser desfeita.`
-            : `Tem certeza que deseja reativar o usuário "${selectedUser?.username}"?`
-          }}
-        </p>
-        <div class="flex gap-3">
-          <button
-            @click="closeModal"
-            class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
-            :disabled="processing"
-          >
-            Cancelar
-          </button>
-          <button
-            @click="confirmAction"
-            class="flex-1 px-4 py-2 rounded-lg font-medium transition-colors"
-            :class="modalAction === 'delete'
-              ? 'bg-red-500 text-white hover:bg-red-600'
-              : 'bg-blue-500 text-white hover:bg-blue-600'"
-            :disabled="processing"
-          >
-            {{ processing ? 'Processando...' : (modalAction === 'delete' ? 'Excluir' : 'Reativar') }}
-          </button>
+        <div
+          class="bg-white rounded-t-2xl sm:rounded-xl p-6 max-w-md w-full shadow-lg"
+          @click.stop
+        >
+          <h3 class="text-lg font-bold text-gray-800 mb-2">
+            {{ modalAction === 'delete' ? '🗑️ Excluir Usuário' : '♻️ Reativar Usuário' }}
+          </h3>
+          <p class="text-gray-600 mb-6">
+            {{ modalAction === 'delete'
+              ? `Tem certeza que deseja excluir o usuário "${selectedUser?.username}"? Esta ação pode ser desfeita.`
+              : `Tem certeza que deseja reativar o usuário "${selectedUser?.username}"?`
+            }}
+          </p>
+          <div class="flex gap-3">
+            <button
+              @click="closeModal"
+              class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium cursor-pointer"
+              :disabled="processing"
+            >
+              Cancelar
+            </button>
+            <button
+              @click="confirmAction"
+              class="flex-1 px-4 py-2 rounded-lg font-medium transition-colors cursor-pointer"
+              :class="modalAction === 'delete'
+                ? 'bg-red-500 text-white hover:bg-red-600'
+                : 'bg-blue-500 text-white hover:bg-blue-600'"
+              :disabled="processing"
+            >
+              {{ processing ? 'Processando...' : (modalAction === 'delete' ? 'Excluir' : 'Reativar') }}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </Transition>
   </div>
 </template>
+
+<style scoped>
+.slide-up-enter-active,
+.slide-up-leave-active {
+  transition: transform 0.3s ease-out;
+}
+
+.slide-up-enter-from {
+  transform: translateY(100%);
+}
+
+.slide-up-leave-to {
+  transform: translateY(100%);
+}
+</style>
