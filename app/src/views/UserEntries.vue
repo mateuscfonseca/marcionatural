@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { getUserEntries, getEntryReports, reportEntry, getUserProjectsWithProgress } from '@/services/api';
-import type { UserEntry, EntryReport, ProjectWithProgress, PaginationResponse } from '@/types';
+import { getUserEntries, getEntryReports, reportEntry, getUserProjectsWithProgress, getUserPerfectWeeks } from '@/services/api';
+import type { UserEntry, EntryReport, ProjectWithProgress, PaginationResponse, PerfectWeek } from '@/types';
 import { useToast } from '@/composables/useToast';
 import { createApiErrorHandler } from '@/utils/handleApiError';
 import EntryProgressModal from '@/components/EntryProgressModal.vue';
@@ -18,6 +18,8 @@ const handleApiError = createApiErrorHandler();
 
 const entries = ref<UserEntry[]>([]);
 const projects = ref<ProjectWithProgress[]>([]);
+const perfectWeeks = ref<PerfectWeek[]>([]);
+const totalBonusPoints = ref(0);
 const loading = ref(true);
 const selectedEntry = ref<UserEntry | null>(null);
 const showEntryModal = ref(false);
@@ -69,6 +71,16 @@ async function loadProjects() {
   }
 }
 
+async function loadPerfectWeeks() {
+  try {
+    const data = await getUserPerfectWeeks(userId.value);
+    perfectWeeks.value = data.perfectWeeks;
+    totalBonusPoints.value = data.totalBonusPoints;
+  } catch (error) {
+    console.error('Erro ao carregar semanas perfeitas:', error);
+  }
+}
+
 async function openEntryDetails(entry: UserEntry) {
   selectedEntry.value = entry;
   try {
@@ -111,6 +123,7 @@ function formatMinutes(minutes: number): string {
 onMounted(() => {
   loadEntries();
   loadProjects();
+  loadPerfectWeeks();
 });
 </script>
 
@@ -181,6 +194,39 @@ onMounted(() => {
               <div v-else class="bg-gray-50 border border-gray-200 rounded-lg p-2 text-center">
                 <p class="text-gray-600 text-xs">Falta {{ formatMinutes(project.goalMinutes - project.totalMinutes) }}</p>
               </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Semanas Perfeitas -->
+        <div v-if="perfectWeeks.length > 0">
+          <h2 class="text-base sm:text-lg font-semibold text-gray-700 mb-4 flex items-center gap-2">
+            <span>🏆</span> Semanas Perfeitas
+          </h2>
+          
+          <!-- Card de total de bônus -->
+          <div class="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4 mb-4">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-sm text-green-700 font-medium">Total em Bônus</p>
+                <p class="text-2xl font-bold text-green-800">+{{ totalBonusPoints }} pontos</p>
+              </div>
+              <div class="text-3xl">🎯</div>
+            </div>
+          </div>
+
+          <!-- Lista de semanas -->
+          <div class="space-y-2">
+            <div
+              v-for="week in perfectWeeks"
+              :key="`${week.year}-${week.weekNumber}`"
+              class="bg-white rounded-lg border p-3 flex items-center justify-between"
+            >
+              <div>
+                <p class="font-medium text-gray-800">Semana {{ week.weekNumber }}/{{ week.year }}</p>
+                <p class="text-xs text-gray-500">{{ week.startDate }} - {{ week.endDate }}</p>
+              </div>
+              <div class="text-green-600 font-bold">+{{ week.points }} pts</div>
             </div>
           </div>
         </div>

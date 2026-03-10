@@ -29,6 +29,7 @@ import {
   getMyReports,
   getMyEntriesWithReports,
 } from '../services/entry-report.service';
+import { getPerfectWeeksByUser } from '../services/points.service';
 
 const entries = new Hono();
 
@@ -432,6 +433,23 @@ entries.get('/users/:userId', async (c) => {
     return c.json(result);
   } catch (error) {
     console.error('Erro ao buscar entradas do usuário:', error);
+    return c.json({ error: 'Erro interno do servidor' }, 500);
+  }
+});
+
+// Listar semanas perfeitas de um usuário
+entries.get('/users/:userId/perfect-weeks', async (c) => {
+  try {
+    const targetUserId = parseInt(c.req.param('userId'));
+
+    if (isNaN(targetUserId)) {
+      return c.json({ error: 'ID de usuário inválido' }, 400);
+    }
+
+    const result = await getPerfectWeeksByUser(targetUserId);
+    return c.json(result);
+  } catch (error) {
+    console.error('Erro ao buscar semanas perfeitas:', error);
     return c.json({ error: 'Erro interno do servidor' }, 500);
   }
 });

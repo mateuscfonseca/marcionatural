@@ -86,15 +86,20 @@ test.describe('Navegação', () => {
   test('deve exibir mensagens toast de sucesso', async ({ page }, testInfo) => {
     await logTestStart(testInfo);
     await loginWithLog(page, testInfo);
-    
+
     await clickWithLog(page, testInfo, '[data-testid="nav-link-my-entries"]', 'Menu Minhas Entradas');
     await page.waitForURL(/\/my-entries/);
-    
+
     await clickWithLog(page, testInfo, '[data-testid="fab-button"]', 'FAB');
     await clickWithLog(page, testInfo, '[data-testid="fab-new-entry"]', 'Nova Entrada');
-    
+
+    // Aguarda modal estar visível
+    await page.waitForSelector('[data-testid="entry-form-modal"]', { state: 'visible' });
+
+    await page.waitForSelector('[data-testid="activity-type-select"]', { state: 'visible' });
     await page.click('[data-testid="activity-type-select"]');
-    await page.click('[data-testid="activity-type-option-Alimentacao Limpa"]');
+    await page.waitForSelector('[data-testid="activity-type-option-alimentacao-limpa"]', { state: 'visible' });
+    await page.click('[data-testid="activity-type-option-alimentacao-limpa"]');
     await page.fill('[data-testid="description-input"]', 'Teste toast E2E');
     await page.fill('[data-testid="date-input"]', new Date().toISOString().split('T')[0]!);
     await clickWithLog(page, testInfo, '[data-testid="submit-entry-button"]', 'Submit');

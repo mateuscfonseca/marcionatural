@@ -64,9 +64,14 @@ test.describe('Entradas - CRUD', () => {
     await clickWithLog(page, testInfo, '[data-testid="fab-button"]', 'FAB');
     await clickWithLog(page, testInfo, '[data-testid="fab-new-entry"]', 'Nova Entrada');
 
+    // Aguarda modal estar visível
+    await page.waitForSelector('[data-testid="entry-form-modal"]', { state: 'visible' });
+
     // Preenche formulário
     await logStep(testInfo, 'Selecionando tipo de atividade', '📝');
+    await page.waitForSelector('[data-testid="activity-type-select"]', { state: 'visible' });
     await page.click('[data-testid="activity-type-select"]');
+    await page.waitForSelector('[data-testid="activity-type-option-alimentacao-limpa"]', { state: 'visible' });
     await page.click('[data-testid="activity-type-option-alimentacao-limpa"]');
     await takeScreenshot(page, testInfo, { label: 'activity-type-selected', type: 'step' });
 
@@ -106,10 +111,15 @@ test.describe('Entradas - CRUD', () => {
     await clickWithLog(page, testInfo, '[data-testid="fab-button"]', 'FAB');
     await clickWithLog(page, testInfo, '[data-testid="fab-new-entry"]', 'Nova Entrada');
 
+    // Aguarda modal estar visível
+    await page.waitForSelector('[data-testid="entry-form-modal"]', { state: 'visible' });
+
     // Seleciona exercicio
     await logStep(testInfo, 'Selecionando Exercício Físico', '🏃');
+    await page.waitForSelector('[data-testid="activity-type-select"]', { state: 'visible' });
     await page.click('[data-testid="activity-type-select"]');
-    await page.click('[data-testid="activity-type-option-Exercicio Fisico"]');
+    await page.waitForSelector('[data-testid="activity-type-option-exercicio-fisico"]', { state: 'visible' });
+    await page.click('[data-testid="activity-type-option-exercicio-fisico"]');
 
     // Preenche
     await fillWithLog(page, testInfo, '[data-testid="description-input"]', 'Corrida matinal - teste E2E', 'Descricao');
@@ -145,9 +155,14 @@ test.describe('Entradas - CRUD', () => {
     await clickWithLog(page, testInfo, '[data-testid="fab-button"]', 'FAB');
     await clickWithLog(page, testInfo, '[data-testid="fab-new-entry"]', 'Nova Entrada');
 
+    // Aguarda modal estar visível
+    await page.waitForSelector('[data-testid="entry-form-modal"]', { state: 'visible' });
+
     await logStep(testInfo, 'Selecionando Alimentacao Limpa (já existe hoje)', '⚠️');
+    await page.waitForSelector('[data-testid="activity-type-select"]', { state: 'visible' });
     await page.click('[data-testid="activity-type-select"]');
-    await page.click('[data-testid="activity-type-option-Alimentacao Limpa"]');
+    await page.waitForSelector('[data-testid="activity-type-option-alimentacao-limpa"]', { state: 'visible' });
+    await page.click('[data-testid="activity-type-option-alimentacao-limpa"]');
     await fillWithLog(page, testInfo, '[data-testid="description-input"]', 'Segunda entrada do dia', 'Descricao');
     await fillWithLog(page, testInfo, '[data-testid="date-input"]', new Date().toISOString().split('T')[0]!, 'Data');
 

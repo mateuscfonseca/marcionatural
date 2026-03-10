@@ -17,6 +17,7 @@ import type {
   TimelineEntry,
   ProjectWithProgress,
   PaginatedEntriesResponse,
+  PerfectWeeksResponse,
 } from '@/types';
 
 const API_BASE = '/api';
@@ -152,6 +153,13 @@ export async function getUserEntries(userId: number, params?: {
 
   const url = `${API_BASE}/entries/users/${userId}${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
   const response = await fetch(url, {
+    credentials: 'include',
+  });
+  return handleResponse(response);
+}
+
+export async function getUserPerfectWeeks(userId: number): Promise<PerfectWeeksResponse> {
+  const response = await fetch(`${API_BASE}/entries/users/${userId}/perfect-weeks`, {
     credentials: 'include',
   });
   return handleResponse(response);

@@ -199,3 +199,16 @@ export interface VotingEntry {
   is_invalidated: boolean;
   invalidated_at: string | null;
 }
+
+export interface PerfectWeek {
+  weekNumber: number;
+  year: number;
+  points: number;
+  startDate: string;
+  endDate: string;
+}
+
+export interface PerfectWeeksResponse {
+  perfectWeeks: PerfectWeek[];
+  totalBonusPoints: number;
+}

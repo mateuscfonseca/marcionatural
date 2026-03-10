@@ -84,7 +84,6 @@ async function getUserTotalPointsUntilDate(
     WHERE e.user_id = ?
       AND e.entry_date IS NOT NULL
       AND substr(e.entry_date, 1, 10) <= ?
-      AND at.is_validated = TRUE
       AND at.category_id IN (${CategoryId.REFEICAO}, ${CategoryId.EXERCICIO}, ${CategoryId.ENTORPECENTES})
   `);
   const categoryDates = categoryDatesStmt.all(userId, untilDate) as Array<{ category_id: number; entry_date: string }>;
@@ -171,7 +170,7 @@ export async function getLeaderboardByDate(date: string): Promise<LeaderboardUse
 export async function getLeaderboardWithMovement(
   compareDate?: string
 ): Promise<LeaderboardUserWithMovement[]> {
-  const targetDate = compareDate || new Date().toISOString().split('T')[0];
+  const targetDate = compareDate || new Date().toISOString().split('T')[0]!;
 
   // Leaderboard atual (ou da data especificada)
   const currentLeaderboard = await getLeaderboardByDate(targetDate);
@@ -179,7 +178,7 @@ export async function getLeaderboardWithMovement(
   // Calcula leaderboard do dia anterior para comparação
   const prevDate = new Date(targetDate);
   prevDate.setDate(prevDate.getDate() - 1);
-  const prevDateStr = prevDate.toISOString().split('T')[0];
+  const prevDateStr = prevDate.toISOString().split('T')[0]!;
 
   const previousLeaderboard = await getLeaderboardByDate(prevDateStr);
 

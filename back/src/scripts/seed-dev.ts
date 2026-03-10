@@ -1,6 +1,7 @@
 /**
  * Script de seed para desenvolvimento
  * Cria 6 usuários com dados históricos de 3 dias para testar UI
+ * Inclui uma semana perfeita para Ana (7 dias de exercício + alimentação limpa + projeto com meta batida)
  *
  * Uso: bun run seed-dev
  */
@@ -20,72 +21,99 @@ const USERS = [
   { username: 'Felipe', password: '123456' },
 ];
 
-// Dados históricos por usuário (últimos 3 dias)
-// Cada entrada: [diaAtraso, activityTypeName, description, points]
-const HISTORICAL_DATA: Record<string, Array<[number, string, string, number]>> = {
-  // Ana: líder consistente
+/**
+ * Calcula o número da semana ISO de uma data
+ * @param date - Data para calcular a semana
+ * @returns Objeto com week (número da semana) e year (ano ISO)
+ */
+function getWeekNumber(date: Date): { week: number; year: number } {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7; // 0 = domingo, 1 = segunda, ..., 6 = sábado
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum); // Ajusta para quinta-feira mais próxima
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const weekNum = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  const isoYear = d.getUTCFullYear();
+
+  return { week: weekNum, year: isoYear };
+}
+
+/**
+ * Dados históricos por usuário
+ * Formato: [diaAtraso, activityTypeName, description, dataExplicita?]
+ * diaAtraso: 0 = hoje, 1 = ontem, 2 = anteontem, etc.
+ * dataExplicita: opcional, usa YYYY-MM-DD se fornecida
+ */
+const HISTORICAL_DATA: Record<string, Array<[number, string, string, string?]>> = {
+  // Ana: líder consistente COM SEMANA PERFEITA (últimos 7 dias)
   'Ana': [
-    [3, 'Alimentação Limpa', 'Café da manhã saudável - aveia com frutas', 10],
-    [3, 'Exercício', 'Corrida matinal 5km', 5],
-    [2, 'Alimentação Limpa', 'Almoço com salada e frango grelhado', 10],
-    [2, 'Exercício', 'Treino de força na academia', 5],
-    [1, 'Alimentação Limpa', 'Jantar leve - peixe com legumes', 10],
-    [1, 'Exercício', 'Yoga 30min', 5],
-    [0, 'Alimentação Limpa', 'Café da manhã - panqueca de banana', 10],
-    [0, 'Exercício', 'Corrida 7km', 5],
+    // Semana perfeita: 6 dias atrás até hoje (segunda a domingo)
+    [6, 'Alimentação Limpa', 'Café da manhã saudável - aveia com frutas', '2025-03-03'],
+    [6, 'Exercício', 'Corrida matinal 5km', '2025-03-03'],
+    [5, 'Alimentação Limpa', 'Almoço com salada e frango grelhado', '2025-03-04'],
+    [5, 'Exercício', 'Treino de força na academia', '2025-03-04'],
+    [4, 'Alimentação Limpa', 'Jantar leve - peixe com legumes', '2025-03-05'],
+    [4, 'Exercício', 'Yoga 30min', '2025-03-05'],
+    [3, 'Alimentação Limpa', 'Café da manhã - panqueca de banana', '2025-03-06'],
+    [3, 'Exercício', 'Corrida 7km', '2025-03-06'],
+    [2, 'Alimentação Limpa', 'Almoço proteico pós-treino', '2025-03-07'],
+    [2, 'Exercício', 'Treino HIIT intenso', '2025-03-07'],
+    [1, 'Alimentação Limpa', 'Café da manhã com smoothie verde', '2025-03-08'],
+    [1, 'Exercício', 'Caminhada no parque', '2025-03-08'],
+    [0, 'Alimentação Limpa', 'Almoço equilibrado em família', '2025-03-09'],
+    [0, 'Exercício', 'Treino de pernas', '2025-03-09'],
   ],
   // Bruno: começou mal, melhorou
   'Bruno': [
-    [3, 'Alimentação Suja', 'Fast food - hambúrguer e fritas', -10],
-    [3, 'Alimentação Suja', 'Refrigerante e pizza', -10],
-    [2, 'Alimentação Limpa', 'Mudou para alimentação saudável', 10],
-    [2, 'Exercício', 'Academia pela primeira vez', 5],
-    [1, 'Alimentação Limpa', 'Dieta continua limpa', 10],
-    [1, 'Exercício', 'Corrida no parque', 5],
-    [0, 'Alimentação Limpa', 'Café da manhã saudável', 10],
-    [0, 'Exercício', 'Treino intenso', 5],
+    [3, 'Alimentação Suja', 'Fast food - hambúrguer e fritas'],
+    [3, 'Alimentação Suja', 'Refrigerante e pizza'],
+    [2, 'Alimentação Limpa', 'Mudou para alimentação saudável'],
+    [2, 'Exercício', 'Academia pela primeira vez'],
+    [1, 'Alimentação Limpa', 'Dieta continua limpa'],
+    [1, 'Exercício', 'Corrida no parque'],
+    [0, 'Alimentação Limpa', 'Café da manhã saudável'],
+    [0, 'Exercício', 'Treino intenso'],
   ],
   // Carla: consistente mas menos ativa
   'Carla': [
-    [3, 'Alimentação Limpa', 'Refeição equilibrada', 10],
-    [2, 'Alimentação Limpa', 'Comida caseira', 10],
-    [1, 'Alimentação Limpa', 'Salada variada', 10],
-    [0, 'Alimentação Limpa', 'Café da manhã leve', 10],
+    [3, 'Alimentação Limpa', 'Refeição equilibrada'],
+    [2, 'Alimentação Limpa', 'Comida caseira'],
+    [1, 'Alimentação Limpa', 'Salada variada'],
+    [0, 'Alimentação Limpa', 'Café da manhã leve'],
   ],
   // Daniel: instável
   'Daniel': [
-    [3, 'Alimentação Limpa', 'Café saudável', 10],
-    [3, 'Exercício', 'Treino pesado', 5],
-    [2, 'Alimentação Suja', 'Jacada no fim de semana', -10],
-    [1, 'Alimentação Limpa', 'Voltou a dieta', 10],
-    [1, 'Exercício', 'Caminhada leve', 5],
-    [0, 'Alimentação Suja', 'Exagerou no almoço', -10],
+    [3, 'Alimentação Limpa', 'Café saudável'],
+    [3, 'Exercício', 'Treino pesado'],
+    [2, 'Alimentação Suja', 'Jacada no fim de semana'],
+    [1, 'Alimentação Limpa', 'Voltou a dieta'],
+    [1, 'Exercício', 'Caminhada leve'],
+    [0, 'Alimentação Suja', 'Exagerou no almoço'],
   ],
   // Elena: focada em exercícios
   'Elena': [
-    [3, 'Alimentação Limpa', 'Dieta balanceada', 10],
-    [3, 'Exercício', 'Treino HIIT', 5],
-    [3, 'Exercício', 'Natação', 5],
-    [2, 'Alimentação Limpa', 'Refeição pós-treino', 10],
-    [2, 'Exercício', 'Musculação', 5],
-    [2, 'Exercício', 'Cardio 30min', 5],
-    [1, 'Alimentação Limpa', 'Alimentação de atleta', 10],
-    [1, 'Exercício', 'Crossfit', 5],
-    [1, 'Exercício', 'Alongamento', 5],
-    [0, 'Alimentação Limpa', 'Café da manhã proteico', 10],
-    [0, 'Exercício', 'Treino de pernas', 5],
+    [3, 'Alimentação Limpa', 'Dieta balanceada'],
+    [3, 'Exercício', 'Treino HIIT'],
+    [3, 'Exercício', 'Natação'],
+    [2, 'Alimentação Limpa', 'Refeição pós-treino'],
+    [2, 'Exercício', 'Musculação'],
+    [2, 'Exercício', 'Cardio 30min'],
+    [1, 'Alimentação Limpa', 'Alimentação de atleta'],
+    [1, 'Exercício', 'Crossfit'],
+    [1, 'Exercício', 'Alongamento'],
+    [0, 'Alimentação Limpa', 'Café da manhã proteico'],
+    [0, 'Exercício', 'Treino de pernas'],
   ],
   // Felipe: começou bem, piorou
   'Felipe': [
-    [3, 'Alimentação Limpa', 'Segunda-feira saudável', 10],
-    [3, 'Exercício', 'Academia motivado', 5],
-    [3, 'Exercício', 'Corrida', 5],
-    [2, 'Alimentação Suja', 'Terça exagerou', -10],
-    [2, 'Usar Tabaco', 'Voltou a fumar', -5],
-    [1, 'Alimentação Limpa', 'Quarta recuperou', 10],
-    [1, 'Exercício', 'Caminhada', 5],
-    [0, 'Alimentação Suja', 'Quinta recaiu', -10],
-    [0, 'Usar Tabaco', 'Fumou de novo', -5],
+    [3, 'Alimentação Limpa', 'Segunda-feira saudável'],
+    [3, 'Exercício', 'Academia motivado'],
+    [3, 'Exercício', 'Corrida'],
+    [2, 'Alimentação Suja', 'Terça exagerou'],
+    [2, 'Usar Tabaco', 'Voltou a fumar'],
+    [1, 'Alimentação Limpa', 'Quarta recuperou'],
+    [1, 'Exercício', 'Caminhada'],
+    [0, 'Alimentação Suja', 'Quinta recaiu'],
+    [0, 'Usar Tabaco', 'Fumou de novo'],
   ],
 };
 
@@ -141,11 +169,18 @@ async function createHistoricalEntries(userIds: Record<string, number>) {
 
     console.log(`  📝 ${username}:`);
 
-    for (const [daysAgo, activityTypeName, description, expectedPoints] of entries) {
-      // Calcula data
-      const date = new Date();
-      date.setDate(date.getDate() - daysAgo);
-      const entryDate = date.toISOString().split('T')[0]; // YYYY-MM-DD
+    for (const entry of entries) {
+      const [daysAgo, activityTypeName, description, explicitDate] = entry as [number, string, string, string?];
+
+      // Calcula data (usa data explícita se fornecida, senão calcula baseada em daysAgo)
+      let entryDate: string;
+      if (explicitDate) {
+        entryDate = explicitDate;
+      } else {
+        const date = new Date();
+        date.setDate(date.getDate() - daysAgo);
+        entryDate = date.toISOString().split('T')[0]; // YYYY-MM-DD
+      }
 
       // Determina categoria e pontos base
       let categoryId: number;
@@ -188,9 +223,51 @@ async function createHistoricalEntries(userIds: Record<string, number>) {
         VALUES (?, ?, ?, ?)
       `).run(userId, activityTypeId, description, entryDate);
 
-      console.log(`    - ${daysAgo === 0 ? 'Hoje' : `${daysAgo} dias atrás`}: ${activityTypeName} (${entryDate})`);
+      console.log(`    - ${explicitDate ? explicitDate : `${daysAgo === 0 ? 'Hoje' : `${daysAgo} dias atrás`}`}: ${activityTypeName} (${entryDate})`);
     }
   }
+}
+
+/**
+ * Cria projeto pessoal com logs para Ana (semana perfeita)
+ */
+async function createPerfectWeekProject(anaUserId: number) {
+  console.log('\n📚 Criando projeto pessoal com semana perfeita para Ana...');
+
+  // Cria projeto pessoal para Ana (meta: 10 horas semanais = 600 minutos)
+  const projectResult = db.prepare(`
+    INSERT INTO personal_projects (user_id, name, description, weekly_hours_goal, is_active)
+    VALUES (?, ?, ?, ?, TRUE)
+  `).run(anaUserId, 'Projeto Semana Perfeita', 'Projeto para testar bônus de semana perfeita', 10);
+
+  const projectId = projectResult.lastInsertRowid as number;
+
+  // Semana 10 de 2025: 03/03 a 09/03
+  // Registra tempo diário no projeto (total: 12 horas = 720 minutos, meta = 10h = 600min)
+  const projectLogs = [
+    { date: '2025-03-03', minutes: 120 }, // Segunda: 2h
+    { date: '2025-03-04', minutes: 100 }, // Terça: 1h40
+    { date: '2025-03-05', minutes: 120 }, // Quarta: 2h
+    { date: '2025-03-06', minutes: 100 }, // Quinta: 1h40
+    { date: '2025-03-07', minutes: 140 }, // Sexta: 2h20
+    { date: '2025-03-08', minutes: 120 }, // Sábado: 2h
+    { date: '2025-03-09', minutes: 20 },  // Domingo: 20min
+    // Total: 720 minutos = 12 horas (meta: 10h) ✅
+  ];
+
+  const weekNumber = 10; // Semana ISO 10 de 2025
+  const year = 2025;
+
+  for (const log of projectLogs) {
+    db.prepare(`
+      INSERT INTO project_daily_logs (project_id, user_id, date, duration_minutes, week_number, year)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(projectId, anaUserId, log.date, log.minutes, weekNumber, year);
+
+    console.log(`    - ${log.date}: ${log.minutes}min registrados`);
+  }
+
+  console.log(`  ✅ Projeto criado com ${720}min (meta: 600min) - Semana ${weekNumber}/${year}`);
 }
 
 async function main() {
@@ -203,11 +280,18 @@ async function main() {
     // Cria entradas históricas
     await createHistoricalEntries(userIds);
 
+    // Cria projeto com semana perfeita para Ana
+    const anaUserId = userIds['Ana'];
+    if (anaUserId) {
+      await createPerfectWeekProject(anaUserId);
+    }
+
     console.log('\n✅ Seed concluído com sucesso!');
     console.log('\n💡 Dica: Use as credenciais abaixo para testar:');
     for (const user of USERS) {
       console.log(`   ${user.username} / ${user.password}`);
     }
+    console.log('\n🏆 Ana tem uma SEMANA PERFEITA (Semana 10/2025) com +75 pontos de bônus!');
   } catch (error) {
     console.error('❌ Erro ao executar seed:', error);
     process.exit(1);

@@ -104,15 +104,17 @@ export async function createEntry(
 ) {
   // Abre FAB
   await page.click('[data-testid="fab-button"]');
-  
+
   // Seleciona "Nova Entrada"
   await page.click('[data-testid="fab-new-entry"]');
-  
+
   // Aguarda modal abrir
-  await page.waitForSelector('[data-testid="entry-form-modal"]');
-  
+  await page.waitForSelector('[data-testid="entry-form-modal"]', { state: 'visible' });
+
   // Seleciona tipo de atividade
+  await page.waitForSelector('[data-testid="activity-type-select"]', { state: 'visible' });
   await page.click('[data-testid="activity-type-select"]');
+  await page.waitForSelector(`[data-testid="activity-type-option-${sanitizeId(options.type)}"]`, { state: 'visible' });
   await page.click(`[data-testid="activity-type-option-${sanitizeId(options.type)}"]`);
   
   // Preenche descrição

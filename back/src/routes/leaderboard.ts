@@ -50,7 +50,7 @@ leaderboard.get('/', async (c) => {
 
     // Leaderboard simples sem comparação
     const leaderboardData = await getLeaderboardByDate(
-      new Date().toISOString().split('T')[0]
+      new Date().toISOString().split('T')[0]!
     );
     return c.json({ leaderboard: leaderboardData });
   } catch (error) {

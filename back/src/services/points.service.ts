@@ -7,6 +7,7 @@ export const POINTS_CONFIG = {
   exercicio: 5,
   entorpecentes: -5,
   projetoPessoalMetaBatida: 50,
+  semanaPerfeita: 75,
 } as const;
 
 /**
@@ -127,6 +128,149 @@ export async function calculateProjectWeeklyPoints(
   };
 }
 
+/**
+ * Obtém os 7 dias de uma semana ISO (segunda a domingo)
+ * Retorna array de strings no formato YYYY-MM-DD
+ */
+function getDaysOfWeekISO(year: number, weekNumber: number): string[] {
+  // Encontra a primeira segunda-feira da semana ISO
+  // Semana ISO: segunda-feira é o primeiro dia da semana
+  const jan1 = new Date(Date.UTC(year, 0, 1));
+  
+  // Calcula quantos dias até a primeira segunda-feira
+  const dayOfWeek = jan1.getUTCDay(); // 0 = domingo, 1 = segunda, ..., 6 = sábado
+  const daysUntilMonday = dayOfWeek === 0 ? 1 : (1 - dayOfWeek + 7) % 7;
+  
+  // Primeira segunda-feira do ano (pode ser em dezembro do ano anterior)
+  const firstMonday = new Date(Date.UTC(year, 0, 1 + daysUntilMonday));
+  
+  // Ajusta para o início da semana ISO correta
+  // Semana 1 é a semana que contém a primeira quinta-feira do ano
+  const firstThursday = new Date(Date.UTC(year, 0, 1));
+  while (firstThursday.getUTCDay() !== 4) {
+    firstThursday.setUTCDate(firstThursday.getUTCDate() + 1);
+  }
+  const week1Monday = new Date(firstThursday);
+  week1Monday.setUTCDate(week1Monday.getUTCDate() - 3); // Volta para segunda-feira
+  
+  // Calcula a segunda-feira da semana desejada
+  const targetMonday = new Date(week1Monday);
+  targetMonday.setUTCDate(targetMonday.getUTCDate() + (weekNumber - 1) * 7);
+  
+  // Gera os 7 dias da semana (segunda a domingo)
+  const days: string[] = [];
+  for (let i = 0; i < 7; i++) {
+    const day = new Date(targetMonday);
+    day.setUTCDate(day.getUTCDate() + i);
+    const yearStr = day.getUTCFullYear();
+    const monthStr = String(day.getUTCMonth() + 1).padStart(2, '0');
+    const dayStr = String(day.getUTCDate()).padStart(2, '0');
+    days.push(`${yearStr}-${monthStr}-${dayStr}`);
+  }
+  
+  return days;
+}
+
+/**
+ * Verifica se uma semana foi "perfeita" e retorna bônus de 75 pontos
+ * 
+ * Critérios para semana perfeita (todos devem ser atendidos):
+ * - 7 dias completos (segunda a domingo)
+ * - Sem pontos negativos (nenhuma alimentação suja ou entorpecentes)
+ * - Exercitou-se todos os dias (pelo menos 1 entrada de exercício por dia)
+ * - Bateu meta de pelo menos 1 projeto pessoal na semana
+ */
+export async function calculatePerfectWeekBonus(
+  userId: number,
+  weekNumber: number,
+  year: number
+): Promise<{ points: number; hasExerciseEveryDay: boolean; noNegativePoints: boolean; projectGoalReached: boolean }> {
+  const daysOfWeek = getDaysOfWeekISO(year, weekNumber);
+  
+  // Verifica cada dia da semana
+  let hasExerciseEveryDay = true;
+  let noNegativePoints = true;
+  
+  for (const date of daysOfWeek) {
+    // Verifica se teve exercício neste dia (categoria 2)
+    const exerciseStmt = getDb().prepare(`
+      SELECT COUNT(*) as count
+      FROM user_entries e
+      INNER JOIN activity_types at ON e.activity_type_id = at.id
+      WHERE e.user_id = ?
+        AND substr(e.entry_date, 1, 10) = ?
+        AND at.category_id = ${CategoryId.EXERCICIO}
+        AND at.is_validated = TRUE
+    `);
+    const exerciseResult = exerciseStmt.get(userId, date) as { count: number };
+    if ((exerciseResult?.count ?? 0) === 0) {
+      hasExerciseEveryDay = false;
+    }
+    
+    // Verifica se teve alimentação suja (activity_type_id = 2) neste dia
+    const unhealthyFoodStmt = getDb().prepare(`
+      SELECT COUNT(*) as count
+      FROM user_entries e
+      INNER JOIN activity_types at ON e.activity_type_id = at.id
+      WHERE e.user_id = ?
+        AND substr(e.entry_date, 1, 10) = ?
+        AND at.id = 2
+        AND at.is_validated = TRUE
+    `);
+    const unhealthyFoodResult = unhealthyFoodStmt.get(userId, date) as { count: number };
+    if ((unhealthyFoodResult?.count ?? 0) > 0) {
+      noNegativePoints = false;
+    }
+    
+    // Verifica se teve entorpecentes (categoria 4) neste dia
+    const drugsStmt = getDb().prepare(`
+      SELECT COUNT(*) as count
+      FROM user_entries e
+      INNER JOIN activity_types at ON e.activity_type_id = at.id
+      WHERE e.user_id = ?
+        AND substr(e.entry_date, 1, 10) = ?
+        AND at.category_id = ${CategoryId.ENTORPECENTES}
+        AND at.is_validated = TRUE
+    `);
+    const drugsResult = drugsStmt.get(userId, date) as { count: number };
+    if ((drugsResult?.count ?? 0) > 0) {
+      noNegativePoints = false;
+    }
+  }
+  
+  // Verifica se bateu meta de pelo menos 1 projeto pessoal na semana
+  const projectStmt = getDb().prepare(`
+    SELECT DISTINCT pp.id
+    FROM personal_projects pp
+    INNER JOIN project_daily_logs pdl ON pdl.project_id = pp.id
+    WHERE pp.user_id = ?
+      AND pdl.week_number = ?
+      AND pdl.year = ?
+  `);
+  const projects = projectStmt.all(userId, weekNumber, year) as Array<{ id: number }>;
+  
+  let projectGoalReached = false;
+  for (const project of projects) {
+    const result = await calculateProjectWeeklyPoints(userId, project.id, weekNumber, year);
+    if (result.goalReached) {
+      projectGoalReached = true;
+      break;
+    }
+  }
+  
+  // Calcula pontos: 75 se todos critérios forem atendidos, 0 caso contrário
+  const points = (hasExerciseEveryDay && noNegativePoints && projectGoalReached)
+    ? POINTS_CONFIG.semanaPerfeita
+    : 0;
+  
+  return {
+    points,
+    hasExerciseEveryDay,
+    noNegativePoints,
+    projectGoalReached,
+  };
+}
+
 export async function getUserEntriesCount(userId: number): Promise<number> {
   const stmt = getDb().prepare(`
     SELECT COUNT(*) as count
@@ -219,6 +363,7 @@ export async function getDailyFoodPoints(userId: number, date: string): Promise<
  * - Exercícios: máximo 5 pontos por dia (1 entrada)
  * - Entorpecentes: mínimo -5 pontos por dia (1 entrada)
  * - Projetos pessoais: 50 pontos por semana com meta batida
+ * - Semana perfeita: 75 pontos bônus por semana perfeita (segunda a domingo)
  *
  * IMPORTANTE: Calcula pontos dinamicamente baseado nos activity_types, não usa e.points
  */
@@ -262,16 +407,101 @@ export async function getUserTotalPoints(userId: number): Promise<number> {
   const projectLogs = projectsStmt.all(userId) as Array<{ project_id: number; week_number: number; year: number }>;
 
   let projectPoints = 0;
-  const processedWeeks = new Set<string>();
+  const processedProjectWeeks = new Set<string>();
 
   for (const log of projectLogs) {
     const weekKey = `${log.project_id}-${log.week_number}-${log.year}`;
-    if (processedWeeks.has(weekKey)) continue;
-    processedWeeks.add(weekKey);
+    if (processedProjectWeeks.has(weekKey)) continue;
+    processedProjectWeeks.add(weekKey);
 
     const result = await calculateProjectWeeklyPoints(userId, log.project_id, log.week_number, log.year);
     projectPoints += result.points;
   }
 
-  return totalPoints + projectPoints;
+  // Soma bônus de semanas perfeitas
+  const perfectWeeksStmt = getDb().prepare(`
+    SELECT DISTINCT week_number, year
+    FROM project_daily_logs
+    WHERE user_id = ?
+  `);
+  const perfectWeekLogs = perfectWeeksStmt.all(userId) as Array<{ week_number: number; year: number }>;
+
+  let perfectWeekPoints = 0;
+  const processedPerfectWeeks = new Set<string>();
+
+  for (const log of perfectWeekLogs) {
+    const weekKey = `${log.year}-${log.week_number}`;
+    if (processedPerfectWeeks.has(weekKey)) continue;
+    processedPerfectWeeks.add(weekKey);
+
+    const result = await calculatePerfectWeekBonus(userId, log.week_number, log.year);
+    perfectWeekPoints += result.points;
+  }
+
+  return totalPoints + projectPoints + perfectWeekPoints;
+}
+
+/**
+ * Obtém todas as semanas perfeitas de um usuário com detalhes
+ * Retorna lista de semanas perfeitas e total de pontos de bônus
+ */
+export async function getPerfectWeeksByUser(userId: number): Promise<{
+  perfectWeeks: Array<{
+    weekNumber: number;
+    year: number;
+    points: number;
+    startDate: string;
+    endDate: string;
+  }>;
+  totalBonusPoints: number;
+}> {
+  // Busca todas as semanas únicas com logs de projeto
+  const stmt = getDb().prepare(`
+    SELECT DISTINCT week_number, year
+    FROM project_daily_logs
+    WHERE user_id = ?
+    ORDER BY year DESC, week_number DESC
+  `);
+  const weekLogs = stmt.all(userId) as Array<{ week_number: number; year: number }>;
+
+  const perfectWeeks: Array<{
+    weekNumber: number;
+    year: number;
+    points: number;
+    startDate: string;
+    endDate: string;
+  }> = [];
+
+  let totalBonusPoints = 0;
+  const processedWeeks = new Set<string>();
+
+  for (const log of weekLogs) {
+    const weekKey = `${log.year}-${log.week_number}`;
+    if (processedWeeks.has(weekKey)) continue;
+    processedWeeks.add(weekKey);
+
+    const result = await calculatePerfectWeekBonus(userId, log.week_number, log.year);
+
+    if (result.points === POINTS_CONFIG.semanaPerfeita) {
+      // Calcula datas de início e fim da semana ISO
+      const daysOfWeek = getDaysOfWeekISO(log.year, log.week_number);
+      const startDate = daysOfWeek[0] ?? ''; // Segunda-feira
+      const endDate = daysOfWeek[6] ?? '';   // Domingo
+
+      perfectWeeks.push({
+        weekNumber: log.week_number,
+        year: log.year,
+        points: result.points,
+        startDate,
+        endDate,
+      });
+
+      totalBonusPoints += result.points;
+    }
+  }
+
+  return {
+    perfectWeeks,
+    totalBonusPoints,
+  };
 }
