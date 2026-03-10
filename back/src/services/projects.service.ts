@@ -357,3 +357,205 @@ export async function getUserProjectsWithProgress(userId: number): Promise<Proje
 
   return projectsWithProgress;
 }
+
+/**
+ * Obtém todos os projetos de um usuário com todos os logs históricos e resumos semanais
+ * Usado para auditoria de semanas perfeitas
+ */
+export async function getUserProjectsWithAllLogs(userId: number): Promise<Array<{
+  id: number;
+  name: string;
+  description: string | null;
+  weeklyHoursGoal: number;
+  logs: ProjectDailyLog[];
+  weeklySummaries: Array<{
+    weekNumber: number;
+    year: number;
+    totalMinutes: number;
+    goalMinutes: number;
+    goalReached: boolean;
+  }>;
+}>> {
+  // Busca todos os projetos do usuário (ativos e inativos)
+  const projectsStmt = getDb().prepare(`
+    SELECT id, name, description, weekly_hours_goal
+    FROM personal_projects
+    WHERE user_id = ?
+    ORDER BY created_at DESC
+  `);
+  const projects = projectsStmt.all(userId) as Array<{
+    id: number;
+    name: string;
+    description: string | null;
+    weekly_hours_goal: number;
+  }>;
+
+  const result: Array<{
+    id: number;
+    name: string;
+    description: string | null;
+    weeklyHoursGoal: number;
+    logs: ProjectDailyLog[];
+    weeklySummaries: Array<{
+      weekNumber: number;
+      year: number;
+      totalMinutes: number;
+      goalMinutes: number;
+      goalReached: boolean;
+    }>;
+  }> = [];
+
+  for (const project of projects) {
+    // Busca todos os logs do projeto
+    const logsStmt = getDb().prepare(`
+      SELECT id, project_id, user_id, date, duration_minutes, week_number, year, created_at
+      FROM project_daily_logs
+      WHERE project_id = ? AND user_id = ?
+      ORDER BY date DESC
+    `);
+    const logs = logsStmt.all(project.id, userId) as ProjectDailyLog[];
+
+    // Busca resumos semanais únicos
+    const weeksStmt = getDb().prepare(`
+      SELECT DISTINCT week_number, year
+      FROM project_daily_logs
+      WHERE project_id = ? AND user_id = ?
+      ORDER BY year DESC, week_number DESC
+    `);
+    const weeks = weeksStmt.all(project.id, userId) as Array<{ week_number: number; year: number }>;
+
+    const weeklySummaries: Array<{
+      weekNumber: number;
+      year: number;
+      totalMinutes: number;
+      goalMinutes: number;
+      goalReached: boolean;
+    }> = [];
+
+    const goalMinutes = project.weekly_hours_goal * 60;
+
+    for (const week of weeks) {
+      // Soma minutos da semana
+      const sumStmt = getDb().prepare(`
+        SELECT COALESCE(SUM(duration_minutes), 0) as total
+        FROM project_daily_logs
+        WHERE project_id = ? AND user_id = ? AND week_number = ? AND year = ?
+      `);
+      const sumResult = sumStmt.get(project.id, userId, week.week_number, week.year) as { total: number };
+      const totalMinutes = sumResult?.total ?? 0;
+      const goalReached = totalMinutes >= goalMinutes;
+
+      weeklySummaries.push({
+        weekNumber: week.week_number,
+        year: week.year,
+        totalMinutes,
+        goalMinutes,
+        goalReached,
+      });
+    }
+
+    result.push({
+      id: project.id,
+      name: project.name,
+      description: project.description,
+      weeklyHoursGoal: project.weekly_hours_goal,
+      logs: normalizeLogs(logs),
+      weeklySummaries,
+    });
+  }
+
+  return result;
+}
+
+/**
+ * Obtém projetos de um usuário com logs de uma semana ISO específica
+ * Usado para auditoria de semanas perfeitas
+ */
+export async function getProjectsByWeek(
+  userId: number,
+  weekNumber: number,
+  year: number
+): Promise<Array<{
+  id: number;
+  name: string;
+  description: string | null;
+  weeklyHoursGoal: number;
+  logs: ProjectDailyLog[];
+  weeklySummaries: Array<{
+    weekNumber: number;
+    year: number;
+    totalMinutes: number;
+    goalMinutes: number;
+    goalReached: boolean;
+  }>;
+}>> {
+  // Busca todos os projetos do usuário (ativos e inativos)
+  const projectsStmt = getDb().prepare(`
+    SELECT id, name, description, weekly_hours_goal
+    FROM personal_projects
+    WHERE user_id = ?
+    ORDER BY created_at DESC
+  `);
+  const projects = projectsStmt.all(userId) as Array<{
+    id: number;
+    name: string;
+    description: string | null;
+    weekly_hours_goal: number;
+  }>;
+
+  const result: Array<{
+    id: number;
+    name: string;
+    description: string | null;
+    weeklyHoursGoal: number;
+    logs: ProjectDailyLog[];
+    weeklySummaries: Array<{
+      weekNumber: number;
+      year: number;
+      totalMinutes: number;
+      goalMinutes: number;
+      goalReached: boolean;
+    }>;
+  }> = [];
+
+  for (const project of projects) {
+    // Busca logs da semana específica
+    const logsStmt = getDb().prepare(`
+      SELECT id, project_id, user_id, date, duration_minutes, week_number, year, created_at
+      FROM project_daily_logs
+      WHERE project_id = ? AND user_id = ? AND week_number = ? AND year = ?
+      ORDER BY date DESC
+    `);
+    const logs = logsStmt.all(project.id, userId, weekNumber, year) as ProjectDailyLog[];
+
+    // Busca resumo da semana específica
+    const sumStmt = getDb().prepare(`
+      SELECT COALESCE(SUM(duration_minutes), 0) as total
+      FROM project_daily_logs
+      WHERE project_id = ? AND user_id = ? AND week_number = ? AND year = ?
+    `);
+    const sumResult = sumStmt.get(project.id, userId, weekNumber, year) as { total: number };
+    const totalMinutes = sumResult?.total ?? 0;
+    const goalMinutes = project.weekly_hours_goal * 60;
+    const goalReached = totalMinutes >= goalMinutes;
+
+    const weeklySummaries = [{
+      weekNumber,
+      year,
+      totalMinutes,
+      goalMinutes,
+      goalReached,
+    }];
+
+    result.push({
+      id: project.id,
+      name: project.name,
+      description: project.description,
+      weeklyHoursGoal: project.weekly_hours_goal,
+      logs: normalizeLogs(logs),
+      weeklySummaries,
+    });
+  }
+
+  return result;
+}

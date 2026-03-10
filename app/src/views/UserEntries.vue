@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { getUserEntries, getEntryReports, reportEntry, getUserProjectsWithProgress, getUserPerfectWeeks } from '@/services/api';
-import type { UserEntry, EntryReport, ProjectWithProgress, PaginationResponse, PerfectWeek } from '@/types';
+import { getUserEntries, getEntryReports, reportEntry, getUserProjectsWithProgress, getUserPerfectWeeks, getUserProjectsWithAllLogs, getUserWeekEntries, getUserProjectsByWeek } from '@/services/api';
+import type { UserEntry, EntryReport, ProjectWithProgress, PaginationResponse, PerfectWeek, ProjectWithLogs, WeekEntriesResponse, ProjectLogsResponse } from '@/types';
 import { useToast } from '@/composables/useToast';
 import { createApiErrorHandler } from '@/utils/handleApiError';
 import EntryProgressModal from '@/components/EntryProgressModal.vue';
 import EntryList from '@/components/EntryList.vue';
+import ProjectAuditModal from '@/components/ProjectAuditModal.vue';
+import PerfectWeekAuditModal from '@/components/PerfectWeekAuditModal.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -25,6 +27,16 @@ const selectedEntry = ref<UserEntry | null>(null);
 const showEntryModal = ref(false);
 const entryReports = ref<EntryReport[]>([]);
 const hasReported = ref(false);
+
+// Modal de auditoria de projetos
+const selectedProject = ref<ProjectWithLogs | null>(null);
+const showProjectAuditModal = ref(false);
+
+// Modal de auditoria de semana perfeita
+const selectedPerfectWeek = ref<PerfectWeek | null>(null);
+const showPerfectWeekAuditModal = ref(false);
+const weekEntries = ref<UserEntry[]>([]);
+const weekProjects = ref<ProjectWithLogs[]>([]);
 
 // Paginação (two-way binding com EntryList)
 const pagination = ref<PaginationResponse | null>(null);
@@ -78,6 +90,37 @@ async function loadPerfectWeeks() {
     totalBonusPoints.value = data.totalBonusPoints;
   } catch (error) {
     console.error('Erro ao carregar semanas perfeitas:', error);
+  }
+}
+
+async function openProjectAudit(project: ProjectWithProgress) {
+  try {
+    const data = await getUserProjectsWithAllLogs(userId.value);
+    const projectWithLogs = data.projects.find(p => p.id === project.id);
+    if (projectWithLogs) {
+      selectedProject.value = projectWithLogs;
+      showProjectAuditModal.value = true;
+    }
+  } catch (error) {
+    console.error('Erro ao carregar logs do projeto:', error);
+  }
+}
+
+async function openPerfectWeekAudit(week: PerfectWeek) {
+  try {
+    selectedPerfectWeek.value = week;
+    
+    // Busca entradas da semana
+    const entriesData = await getUserWeekEntries(userId.value, week.weekNumber, week.year);
+    weekEntries.value = entriesData.entries;
+    
+    // Busca projetos da semana
+    const projectsData = await getUserProjectsByWeek(userId.value, week.weekNumber, week.year);
+    weekProjects.value = projectsData.projects;
+    
+    showPerfectWeekAuditModal.value = true;
+  } catch (error) {
+    console.error('Erro ao carregar dados da semana perfeita:', error);
   }
 }
 
@@ -194,6 +237,14 @@ onMounted(() => {
               <div v-else class="bg-gray-50 border border-gray-200 rounded-lg p-2 text-center">
                 <p class="text-gray-600 text-xs">Falta {{ formatMinutes(project.goalMinutes - project.totalMinutes) }}</p>
               </div>
+
+              <!-- Botão de Auditoria -->
+              <button
+                @click="openProjectAudit(project)"
+                class="mt-3 w-full py-2 px-4 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
+              >
+                🔍 Ver Auditoria Completa
+              </button>
             </div>
           </div>
         </div>
@@ -203,7 +254,7 @@ onMounted(() => {
           <h2 class="text-base sm:text-lg font-semibold text-gray-700 mb-4 flex items-center gap-2">
             <span>🏆</span> Semanas Perfeitas
           </h2>
-          
+
           <!-- Card de total de bônus -->
           <div class="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4 mb-4">
             <div class="flex items-center justify-between">
@@ -220,7 +271,8 @@ onMounted(() => {
             <div
               v-for="week in perfectWeeks"
               :key="`${week.year}-${week.weekNumber}`"
-              class="bg-white rounded-lg border p-3 flex items-center justify-between"
+              @click="openPerfectWeekAudit(week)"
+              class="bg-white rounded-lg border p-3 flex items-center justify-between cursor-pointer hover:shadow-md transition-shadow"
             >
               <div>
                 <p class="font-medium text-gray-800">Semana {{ week.weekNumber }}/{{ week.year }}</p>
@@ -252,6 +304,22 @@ onMounted(() => {
       :reports="entryReports"
       :has-reported="hasReported"
       @report="handleReportFromModal"
+    />
+
+    <!-- Modal de Auditoria de Projetos -->
+    <ProjectAuditModal
+      v-model="showProjectAuditModal"
+      :project="selectedProject"
+      @close="showProjectAuditModal = false"
+    />
+
+    <!-- Modal de Auditoria de Semana Perfeita -->
+    <PerfectWeekAuditModal
+      v-model="showPerfectWeekAuditModal"
+      :week="selectedPerfectWeek"
+      :entries="weekEntries"
+      :projects="weekProjects"
+      @close="showPerfectWeekAuditModal = false"
     />
   </div>
 </template>

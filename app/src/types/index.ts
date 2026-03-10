@@ -212,3 +212,37 @@ export interface PerfectWeeksResponse {
   perfectWeeks: PerfectWeek[];
   totalBonusPoints: number;
 }
+
+export interface ProjectWeeklySummary {
+  weekNumber: number;
+  year: number;
+  totalMinutes: number;
+  goalMinutes: number;
+  goalReached: boolean;
+}
+
+export interface ProjectWithLogs {
+  id: number;
+  name: string;
+  description: string | null;
+  weeklyHoursGoal: number;
+  logs: ProjectDailyLog[];
+  weeklySummaries: ProjectWeeklySummary[];
+}
+
+export interface ProjectLogsResponse {
+  projects: ProjectWithLogs[];
+}
+
+export interface WeekEntriesSummary {
+  totalEntries: number;
+  exerciseDays: number;
+  negativePoints: number;
+  hasExerciseEveryDay: boolean;
+  hasNegativePoints: boolean;
+}
+
+export interface WeekEntriesResponse {
+  entries: UserEntry[];
+  summary: WeekEntriesSummary;
+}

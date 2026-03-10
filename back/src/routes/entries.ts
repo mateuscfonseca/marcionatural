@@ -13,6 +13,7 @@ import {
   getUserEntryForDate,
   getPaginatedEntriesByUser,
   getPaginatedUserEntriesForLeaderboard,
+  getEntriesByWeek,
 } from '../services/entry.service';
 import { getActivityTypesForUser } from '../services/activity-type.service';
 import { CategoryId, CategoryNames } from '../utils/category.enum';
@@ -450,6 +451,25 @@ entries.get('/users/:userId/perfect-weeks', async (c) => {
     return c.json(result);
   } catch (error) {
     console.error('Erro ao buscar semanas perfeitas:', error);
+    return c.json({ error: 'Erro interno do servidor' }, 500);
+  }
+});
+
+// Listar entradas de uma semana específica (para auditoria)
+entries.get('/users/:userId/week/:weekNumber/:year', async (c) => {
+  try {
+    const targetUserId = parseInt(c.req.param('userId'));
+    const weekNumber = parseInt(c.req.param('weekNumber'));
+    const year = parseInt(c.req.param('year'));
+
+    if (isNaN(targetUserId) || isNaN(weekNumber) || isNaN(year)) {
+      return c.json({ error: 'Parâmetros inválidos' }, 400);
+    }
+
+    const result = await getEntriesByWeek(targetUserId, weekNumber, year);
+    return c.json(result);
+  } catch (error) {
+    console.error('Erro ao buscar entradas da semana:', error);
     return c.json({ error: 'Erro interno do servidor' }, 500);
   }
 });

@@ -18,6 +18,8 @@ import type {
   ProjectWithProgress,
   PaginatedEntriesResponse,
   PerfectWeeksResponse,
+  ProjectLogsResponse,
+  WeekEntriesResponse,
 } from '@/types';
 
 const API_BASE = '/api';
@@ -377,6 +379,30 @@ export async function getProjectWeeklyProgress(
 // Projetos de um usuário com progresso (para visualização pública)
 export async function getUserProjectsWithProgress(userId: number): Promise<{ projects: ProjectWithProgress[] }> {
   const response = await fetch(`${API_BASE}/projects/user/${userId}/with-progress`, {
+    credentials: 'include',
+  });
+  return handleResponse(response);
+}
+
+// Projetos de um usuário com todos os logs históricos (para auditoria)
+export async function getUserProjectsWithAllLogs(userId: number): Promise<ProjectLogsResponse> {
+  const response = await fetch(`${API_BASE}/projects/user/${userId}/all-logs`, {
+    credentials: 'include',
+  });
+  return handleResponse(response);
+}
+
+// Projetos de um usuário com logs de uma semana específica (para auditoria de semana perfeita)
+export async function getUserProjectsByWeek(userId: number, weekNumber: number, year: number): Promise<ProjectLogsResponse> {
+  const response = await fetch(`${API_BASE}/projects/user/${userId}/week/${weekNumber}/${year}`, {
+    credentials: 'include',
+  });
+  return handleResponse(response);
+}
+
+// Entradas de um usuário em uma semana específica (para auditoria de semana perfeita)
+export async function getUserWeekEntries(userId: number, weekNumber: number, year: number): Promise<WeekEntriesResponse> {
+  const response = await fetch(`${API_BASE}/entries/users/${userId}/week/${weekNumber}/${year}`, {
     credentials: 'include',
   });
   return handleResponse(response);

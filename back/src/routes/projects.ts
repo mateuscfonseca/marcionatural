@@ -11,6 +11,8 @@ import {
   getCurrentWeekProgress,
   getProjectTotalPoints,
   getUserProjectsWithProgress,
+  getUserProjectsWithAllLogs,
+  getProjectsByWeek,
 } from '../services/projects.service';
 
 const projects = new Hono();
@@ -232,6 +234,44 @@ projects.get('/user/:userId/with-progress', async (c) => {
     return c.json({ projects });
   } catch (error) {
     console.error('Erro ao buscar projetos com progresso:', error);
+    return c.json({ error: 'Erro interno do servidor' }, 500);
+  }
+});
+
+// Projetos de um usuário com todos os logs históricos (para auditoria)
+projects.get('/user/:userId/all-logs', async (c) => {
+  try {
+    const userId = parseInt(c.req.param('userId'));
+
+    if (isNaN(userId)) {
+      return c.json({ error: 'ID de usuário inválido' }, 400);
+    }
+
+    const projects = await getUserProjectsWithAllLogs(userId);
+
+    return c.json({ projects });
+  } catch (error) {
+    console.error('Erro ao buscar logs de projetos:', error);
+    return c.json({ error: 'Erro interno do servidor' }, 500);
+  }
+});
+
+// Projetos de um usuário com logs de uma semana específica (para auditoria de semana perfeita)
+projects.get('/user/:userId/week/:weekNumber/:year', async (c) => {
+  try {
+    const userId = parseInt(c.req.param('userId'));
+    const weekNumber = parseInt(c.req.param('weekNumber'));
+    const year = parseInt(c.req.param('year'));
+
+    if (isNaN(userId) || isNaN(weekNumber) || isNaN(year)) {
+      return c.json({ error: 'Parâmetros inválidos' }, 400);
+    }
+
+    const projects = await getProjectsByWeek(userId, weekNumber, year);
+
+    return c.json({ projects });
+  } catch (error) {
+    console.error('Erro ao buscar projetos da semana:', error);
     return c.json({ error: 'Erro interno do servidor' }, 500);
   }
 });

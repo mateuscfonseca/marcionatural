@@ -10,6 +10,7 @@ import {
   getWeeklyProgress,
   getCurrentWeekProgress,
   getUserProjectsWithProgress,
+  getUserProjectsWithAllLogs,
 } from '../services/projects.service';
 
 describe('Projects Service', () => {

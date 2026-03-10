@@ -571,3 +571,115 @@ export async function getUserEntryForDate(userId: number, entryDate: string): Pr
     invalidated_at: toUTCDate(entry.invalidated_at),
   };
 }
+
+/**
+ * Obtém todas as entradas de uma semana ISO específica
+ * Usado para auditoria de semanas perfeitas
+ */
+export async function getEntriesByWeek(
+  userId: number,
+  weekNumber: number,
+  year: number
+): Promise<{
+  entries: UserEntry[];
+  summary: {
+    totalEntries: number;
+    exerciseDays: number;
+    negativePoints: number;
+    hasExerciseEveryDay: boolean;
+    hasNegativePoints: boolean;
+  };
+}> {
+  // Função auxiliar para obter os dias de uma semana ISO
+  function getDaysOfWeekISO(year: number, weekNumber: number): string[] {
+    const firstThursday = new Date(Date.UTC(year, 0, 1));
+    while (firstThursday.getUTCDay() !== 4) {
+      firstThursday.setUTCDate(firstThursday.getUTCDate() + 1);
+    }
+    const week1Monday = new Date(firstThursday);
+    week1Monday.setUTCDate(week1Monday.getUTCDate() - 3);
+
+    const targetMonday = new Date(week1Monday);
+    targetMonday.setUTCDate(targetMonday.getUTCDate() + (weekNumber - 1) * 7);
+
+    const days: string[] = [];
+    for (let i = 0; i < 7; i++) {
+      const day = new Date(targetMonday);
+      day.setUTCDate(day.getUTCDate() + i);
+      const yearStr = day.getUTCFullYear();
+      const monthStr = String(day.getUTCMonth() + 1).padStart(2, '0');
+      const dayStr = String(day.getUTCDate()).padStart(2, '0');
+      days.push(`${yearStr}-${monthStr}-${dayStr}`);
+    }
+    return days;
+  }
+
+  const daysOfWeek = getDaysOfWeekISO(year, weekNumber);
+
+  // Busca todas as entradas da semana
+  const stmt = getDb().prepare(`
+    SELECT
+      e.id,
+      e.user_id,
+      e.activity_type_id,
+      e.description,
+      e.photo_url,
+      e.photo_original_name,
+      e.photo_identifier,
+      e.duration_minutes,
+      e.entry_date,
+      e.is_invalidated,
+      e.invalidated_at,
+      e.created_at,
+      at.name as activity_type_name,
+      at.category_id,
+      at.is_positive as is_activity_positive,
+      at.base_points as points,
+      c.name as category_name,
+      at.is_validated as is_activity_validated
+    FROM user_entries e
+    INNER JOIN activity_types at ON e.activity_type_id = at.id
+    INNER JOIN categories c ON at.category_id = c.id
+    WHERE e.user_id = ?
+      AND e.entry_date >= ?
+      AND e.entry_date <= ?
+      AND at.is_validated = TRUE
+    ORDER BY e.entry_date ASC
+  `);
+
+  const startDate = daysOfWeek[0];
+  const endDate = daysOfWeek[6];
+
+  const entries = stmt.all(userId, startDate, endDate) as UserEntry[];
+  const normalizedEntries = entries.map(e => ({
+    ...e,
+    created_at: toUTCDate(e.created_at)!,
+    invalidated_at: toUTCDate(e.invalidated_at),
+  }));
+
+  // Calcula resumo
+  const daysWithExercise = new Set<string>();
+  let hasNegativePoints = false;
+
+  for (const entry of normalizedEntries) {
+    // Conta dias com exercício (categoria 2)
+    if (entry.category_id === 2 && entry.entry_date) {
+      daysWithExercise.add(entry.entry_date);
+    }
+    // Verifica pontos negativos (alimentação suja ou entorpecentes)
+    if ((entry.category_id === 1 && entry.points < 0) || entry.category_id === 4) {
+      hasNegativePoints = true;
+    }
+  }
+
+  return {
+    entries: normalizedEntries,
+    summary: {
+      totalEntries: normalizedEntries.length,
+      exerciseDays: daysWithExercise.size,
+      negativePoints: hasNegativePoints ? 1 : 0,
+      hasExerciseEveryDay: daysWithExercise.size === 7,
+      hasNegativePoints,
+    },
+  };
+}
